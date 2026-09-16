@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-users
+      author: signify
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: first_name
+                  type: VARCHAR(100)
+              - column:
+                  name: last_name
+                  type: VARCHAR(100)
+              - column:
+                  name: full_name
+                  type: VARCHAR(200)
+              - column:
+                  name: email
+                  type: VARCHAR(150)
+              - column:
+                  name: phone
+                  type: VARCHAR(20)
+              - column:
+                  name: gender
+                  type: BOOLEAN
+              - column:
+                  name: address
+                  type: TEXT
+              - column:
+                  name: avatar
+                  type: TEXT
+              - column:
+                  name: email_verified
+                  type: BOOLEAN
+              - column:
+                  name: is_updated_profile
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: BIGINT
+              - column:
+                  name: updated_at
+                  type: BIGINT
+              - column:
+                  name: deleted_at
+                  type: BIGINT

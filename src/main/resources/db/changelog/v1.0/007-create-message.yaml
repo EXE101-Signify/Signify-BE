@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-message
+      author: signify
+      changes:
+        - createTable:
+            tableName: message
+            columns:
+              - column:
+                  name: message_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: conversation_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sender_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: TEXT
+              - column:
+                  name: message_type
+                  type: VARCHAR(20)
+                  defaultValue: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: edited_at
+                  type: BIGINT
+              - column:
+                  name: is_deleted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: message
+            baseColumnNames: conversation_id
+            referencedTableName: conversation
+            referencedColumnNames: conversation_id
+            constraintName: fk_message_conversation
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: message
+            baseColumnNames: sender_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_message_sender

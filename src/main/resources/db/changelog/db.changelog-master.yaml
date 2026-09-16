@@ -1,6 +1,3 @@
 databaseChangeLog:
-  - changeSet:
-      id: 0
-      author: admin
-      changes:
-        -
+  - include:
+      file: db/changelog/v1.0/db.changelog-v1.0.yaml

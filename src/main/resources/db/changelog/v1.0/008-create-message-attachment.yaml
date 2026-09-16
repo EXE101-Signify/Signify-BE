@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-create-message-attachment
+      author: signify
+      changes:
+        - createTable:
+            tableName: message_attachment
+            columns:
+              - column:
+                  name: attachment_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: message_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_url
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(255)
+              - column:
+                  name: mime_type
+                  type: VARCHAR(100)
+              - column:
+                  name: file_size
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: message_attachment
+            baseColumnNames: message_id
+            referencedTableName: message
+            referencedColumnNames: message_id
+            constraintName: fk_attachment_message
+            onDelete: CASCADE

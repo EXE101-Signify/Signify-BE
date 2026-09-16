@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-user-sessions
+      author: signify
+      changes:
+        - createTable:
+            tableName: user_sessions
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: refresh_token_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: device_name
+                  type: VARCHAR(255)
+              - column:
+                  name: ip_address
+                  type: VARCHAR(100)
+              - column:
+                  name: user_agent
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked_at
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: user_sessions
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_user_sessions_user
+            onDelete: CASCADE

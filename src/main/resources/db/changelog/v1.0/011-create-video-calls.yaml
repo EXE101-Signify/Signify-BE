@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-create-video-calls
+      author: signify
+      changes:
+        - createTable:
+            tableName: video_calls
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: conversation_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: caller_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: receiver_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: BIGINT
+              - column:
+                  name: ended_at
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: video_calls
+            baseColumnNames: conversation_id
+            referencedTableName: conversation
+            referencedColumnNames: conversation_id
+            constraintName: fk_video_calls_conversation
+        - addForeignKeyConstraint:
+            baseTableName: video_calls
+            baseColumnNames: caller_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_video_calls_caller
+        - addForeignKeyConstraint:
+            baseTableName: video_calls
+            baseColumnNames: receiver_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_video_calls_receiver

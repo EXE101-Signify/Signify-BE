@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-create-call-transcripts
+      author: signify
+      changes:
+        - createTable:
+            tableName: call_transcripts
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: call_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: speaker_id
+                  type: BIGINT
+              - column:
+                  name: text
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: BIGINT
+              - column:
+                  name: end_time
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: call_transcripts
+            baseColumnNames: call_id
+            referencedTableName: video_calls
+            referencedColumnNames: id
+            constraintName: fk_call_transcripts_call
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: call_transcripts
+            baseColumnNames: speaker_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_call_transcripts_speaker
