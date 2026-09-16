@@ -12,3 +12,42 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+  cloudflare:
+    r2:
+      access-key-id: ${R2_ACCESS_KEY}
+      secret-key-id: ${R2_SECRET_KEY}
+      account-id: ${R2_ACCOUNT_ID}
+      end-point: ${R2_END_POINT}
+      bucket-name: ${R2_BUCKET_NAME}
+      public-base-url: ${R2_PUBLIC_BASE_URL}
+
+  spring:
+    data:
+      redis:
+        host: ${REDIS_HOST}
+        port: ${REDIS_PORT}
+        password: ${REDIS_PASSWORD}
+
+  # JWT
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: 86400000
+    refresh-expiration: 86400000
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  payos:
+    client-id: ${PAYOS_CLIENT_ID}
+    api-key: ${PAYOS_API_KEY}
+    checksum-key: ${PAYOS_CHECKSUM_KEY}
