@@ -1,0 +1,302 @@
+# ============================================================================
+# Signify Backend - .gitignore
+# Java 25 / Spring Boot / Gradle / IntelliJ IDEA / VS Code
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Java
+# ----------------------------------------------------------------------------
+*.class
+*.log
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+# ----------------------------------------------------------------------------
+# Gradle
+# ----------------------------------------------------------------------------
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Gradle cache / generated files
+.gradletasknamecache
+
+# ----------------------------------------------------------------------------
+# IntelliJ IDEA
+# ----------------------------------------------------------------------------
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# IntelliJ workspace / local files
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+
+# IntelliJ generated
+.idea/modules.xml
+.idea/jarRepositories.xml
+
+# ----------------------------------------------------------------------------
+# VS Code
+# ----------------------------------------------------------------------------
+.vscode/
+!.vscode/settings.example.json
+
+# VS Code history
+.history/
+
+# ----------------------------------------------------------------------------
+# Eclipse
+# ----------------------------------------------------------------------------
+.classpath
+.project
+.settings/
+.factorypath
+.springBeans
+.sts4-cache/
+
+# ----------------------------------------------------------------------------
+# NetBeans
+# ----------------------------------------------------------------------------
+/nbproject/private/
+/nbbuild/
+/dist/
+/.nb-gradle/
+nb-configuration.xml
+nbactions.xml
+
+# ----------------------------------------------------------------------------
+# OS generated files
+# ----------------------------------------------------------------------------
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# ----------------------------------------------------------------------------
+# Environment / Secrets
+# ----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Spring configuration containing secrets
+application-local.yml
+application-local.yaml
+application-local.properties
+
+application-secret.yml
+application-secret.yaml
+application-secret.properties
+
+# Optional: ignore local Spring config
+# Uncomment if your application-local.* files contain credentials
+# src/main/resources/application-local.yml
+
+# ----------------------------------------------------------------------------
+# Credentials / Certificates / Private Keys
+# ----------------------------------------------------------------------------
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+
+# Cloud / service credentials
+credentials.json
+service-account.json
+
+# ----------------------------------------------------------------------------
+# Database
+# ----------------------------------------------------------------------------
+*.sql.bak
+*.dump
+*.backup
+*.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL local files
+pgdata/
+postgres-data/
+
+# ----------------------------------------------------------------------------
+# Docker
+# ----------------------------------------------------------------------------
+docker-data/
+.docker/
+docker-compose.override.yml
+
+# ----------------------------------------------------------------------------
+# Logs
+# ----------------------------------------------------------------------------
+logs/
+log/
+*.log
+*.log.*
+spring.log
+
+# ----------------------------------------------------------------------------
+# Temporary files
+# ----------------------------------------------------------------------------
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+*.rej
+
+# ----------------------------------------------------------------------------
+# Generated files
+# ----------------------------------------------------------------------------
+generated/
+generated-sources/
+generated-test-sources/
+
+# OpenAPI generated files
+openapi-generated/
+
+# ----------------------------------------------------------------------------
+# Test / Coverage
+# ----------------------------------------------------------------------------
+target/
+out/
+coverage/
+jacoco/
+jacoco.exec
+
+# ----------------------------------------------------------------------------
+# SonarQube
+# ----------------------------------------------------------------------------
+.sonar/
+.scannerwork/
+
+# ----------------------------------------------------------------------------
+# Lombok
+# ----------------------------------------------------------------------------
+lombok.config
+
+# ----------------------------------------------------------------------------
+# Annotation Processor generated files
+# ----------------------------------------------------------------------------
+/bin/
+/out/
+
+# ----------------------------------------------------------------------------
+# Maven (if Maven is ever used)
+# ----------------------------------------------------------------------------
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+.flattened-pom.xml
+
+# ----------------------------------------------------------------------------
+# Spring Boot generated files
+# ----------------------------------------------------------------------------
+*.pid
+*.pid.lock
+
+# ----------------------------------------------------------------------------
+# Node / Frontend (if frontend is inside the repository)
+# ----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.npm/
+.yarn/
+.pnpm-store/
+
+dist/
+.angular/
+.cache/
+
+# ----------------------------------------------------------------------------
+# Frontend environment files
+# ----------------------------------------------------------------------------
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# ----------------------------------------------------------------------------
+# Docker secrets
+# ----------------------------------------------------------------------------
+docker/secrets/
+secrets/
+
+# ----------------------------------------------------------------------------
+# Local development files
+# ----------------------------------------------------------------------------
+local/
+.local/
+*.local
+
+# ----------------------------------------------------------------------------
+# IDE metadata
+# ----------------------------------------------------------------------------
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ----------------------------------------------------------------------------
+# API testing
+# ----------------------------------------------------------------------------
+# Uncomment if you don't want to commit local API client data
+# .postman/
+# .insomnia/
+
+# ----------------------------------------------------------------------------
+# OS / Editor backups
+# ----------------------------------------------------------------------------
+*.orig
+*.save
+*.swp
+*.swo
+*.swn
+
+# ----------------------------------------------------------------------------
+# Temporary build artifacts
+# ----------------------------------------------------------------------------
+*.jar
+*.war
+*.ear
+
+# IMPORTANT:
+# Keep Gradle wrapper JAR
+!gradle/wrapper/gradle-wrapper.jar
+
+# ----------------------------------------------------------------------------
+# Local scripts / personal notes
+# ----------------------------------------------------------------------------
+TODO.local.md
+NOTES.local.md
