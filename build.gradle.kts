@@ -42,6 +42,7 @@ dependencies {
     testCompileOnly("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testAnnotationProcessor("org.projectlombok:lombok")
+    implementation("fptu.exe202.signify:api-response:1.0.0")
 }
 
 dependencyManagement {
