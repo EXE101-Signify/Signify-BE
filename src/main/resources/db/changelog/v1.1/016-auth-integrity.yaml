@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-auth-integrity-and-id-generation
+      author: signify
+      preConditions:
+        - onFail: HALT
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: '0'
+            sql: SELECT COUNT(*) FROM (SELECT username FROM account GROUP BY username HAVING COUNT(*) > 1) duplicates
+        - sqlCheck:
+            expectedResult: '0'
+            sql: SELECT COUNT(*) FROM (SELECT refresh_token_hash FROM user_sessions GROUP BY refresh_token_hash HAVING COUNT(*) > 1) duplicates
+      changes:
+        - createSequence:
+            sequenceName: auth_users_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - createSequence:
+            sequenceName: auth_user_sessions_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - sql:
+            dbms: postgresql
+            sql: |
+              SELECT setval('auth_users_id_seq', GREATEST(COALESCE((SELECT MAX(user_id) FROM users), 0) + 1, 1), false);
+              SELECT setval('auth_user_sessions_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM user_sessions), 0) + 1, 1), false);
+        - addDefaultValue:
+            tableName: users
+            columnName: user_id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: auth_users_id_seq
+        - addDefaultValue:
+            tableName: user_sessions
+            columnName: id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: auth_user_sessions_id_seq
+        - addUniqueConstraint:
+            tableName: account
+            columnNames: username
+            constraintName: uq_account_username
+        - addUniqueConstraint:
+            tableName: user_sessions
+            columnNames: refresh_token_hash
+            constraintName: uq_user_sessions_refresh_hash
+        - createIndex:
+            tableName: user_sessions
+            indexName: idx_user_sessions_user_revoked
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: revoked_at

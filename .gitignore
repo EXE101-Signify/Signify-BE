@@ -184,6 +184,9 @@ openapi-generated/
 # ----------------------------------------------------------------------------
 target/
 out/
+# Outbound application ports are source code, not generated output.
+!src/main/java/**/application/port/out/
+!src/main/java/**/application/port/out/*.java
 coverage/
 jacoco/
 jacoco.exec
