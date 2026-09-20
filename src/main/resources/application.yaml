@@ -66,4 +66,3 @@ storage:
     region: ${R2_REGION:auto}
     access-key: ${R2_ACCESS_KEY:}
     secret-key: ${R2_SECRET_KEY:}
-

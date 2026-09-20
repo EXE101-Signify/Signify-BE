@@ -152,4 +152,3 @@ class AuthPersistenceTest {
         @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(4); }
     }
 }
-

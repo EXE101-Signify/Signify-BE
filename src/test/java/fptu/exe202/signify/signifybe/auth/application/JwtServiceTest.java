@@ -170,5 +170,3 @@ class JwtServiceTest {
         assertThat(new JwtProperties(secret, ENCRYPTION_KEY, 900000, 604800000).toString()).doesNotContain(secret);
     }
 }
-
-

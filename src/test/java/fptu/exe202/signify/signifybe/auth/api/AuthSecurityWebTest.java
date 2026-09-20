@@ -184,5 +184,3 @@ class AuthSecurityWebTest {
         @GetMapping("/test/admin") public String admin() { return "ok"; }
     }
 }
-
-

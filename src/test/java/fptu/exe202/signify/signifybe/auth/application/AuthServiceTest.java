@@ -181,4 +181,3 @@ class AuthServiceTest {
         assertThat(service.me(42).username()).isEqualTo("test-user");
     }
 }
-

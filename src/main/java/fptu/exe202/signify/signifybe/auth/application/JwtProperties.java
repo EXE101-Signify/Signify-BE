@@ -14,4 +14,3 @@ public record JwtProperties(String secret, String refreshEncryptionKey, @Default
 
     @Override public String toString() { return "JwtProperties[secret=REDACTED, refreshEncryptionKey=REDACTED]"; }
 }
-

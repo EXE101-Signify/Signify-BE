@@ -116,9 +116,9 @@ The filter performs no database lookup and uses no HTTP session. A supplied inva
 
 ### Refresh tokens and logout
 
-Refresh JWTs contain the user ID, `type=refresh`, issuer/timestamps, and a random 256-bit `jti`. They are distinct even when issued to the same user in the same second. Only SHA-256 of the complete signed token is persisted; the raw token is returned at issuance and never saved in the database. A fast hash is appropriate here because these are high-entropy random tokens, not human passwords.
+Refresh tokens are encrypted JWTs (JWE), using direct AES-256-GCM (`alg=dir`, `enc=A256GCM`) through the existing JJWT 0.12.6 library. The encrypted claims contain the user ID, `type=refresh`, issuer/timestamps, and a random 256-bit `jti`. JJWT generates a fresh encryption IV and authentication tag. Only the backend holds the decryption key. Tokens are distinct even when issued to the same user in the same second. Only SHA-256 of the complete encrypted token is persisted; plaintext claims and the token itself are never stored in the database. A fast hash is appropriate here because these are high-entropy random tokens, not human passwords.
 
-Refresh validates the JWT and then locks the account row and matching session row. It verifies user/account status, ownership, revocation, and server-side expiration. In the same transaction it revokes the old session and inserts a replacement session with a new token hash. Concurrent refreshes of the same token allow only one success. A failed replacement rolls back the old revocation. Login, refresh, logout, and logout-all use the same account-first lock order.
+Refresh authenticates/decrypts the JWE, validates the claims, and then locks the account row and matching session row. It verifies user/account status, ownership, revocation, and server-side expiration. In the same transaction it revokes the old session and inserts a replacement session with a new token hash. Concurrent refreshes of the same token allow only one success. A failed replacement rolls back the old revocation. Login, refresh, logout, and logout-all use the same account-first lock order.
 
 Logout requires an authenticated identity matching the refresh token owner. Revocation is idempotent for a still-valid refresh JWT. Logout-all revokes every session for the authenticated user. Access JWTs remain valid until their configured expiry; logout, account disabling, and role changes do not immediately invalidate already-issued access JWTs. `/me` and refresh do re-check account/user state.
 
@@ -126,6 +126,20 @@ Replay of a revoked refresh token is rejected. There is no token-family tracking
 
 Device names and user-agent strings are bounded display metadata. IP comes from `HttpServletRequest.getRemoteAddr()`. Untrusted `X-Forwarded-For` is ignored. Existing trusted-proxy behavior is not changed.
 
+### Encrypted refresh-token response contract
+
+All responses containing a refresh token use the encrypted representation:
+
+- Register and login: `data.tokens.refreshToken`.
+- Refresh: `data.refreshToken`.
+
+The value is a five-part compact JWE (`header..iv.ciphertext.tag` for direct encryption). Only cryptographic metadata appears in the public header; the user ID and other claims are encrypted. This uses [JJWT's built-in JWE support](https://github.com/jwtk/jjwt/tree/0.12.6#json-web-encryption-jwe), with no new encryption library or custom encryption algorithm.
+
+The frontend keeps this opaque string and sends it unchanged as `refreshToken` to refresh/logout. It must not decode it as a three-part signed JWT, decrypt it, or receive the encryption key. JSON field names and the standard API response envelope are unchanged. Access tokens remain signed HS256 JWTs.
+
+Encryption does **not** hide the token string from browser DevTools/Network. The encrypted string is still a bearer credential and can be replayed if stolen. HTTPS remains required in deployment. Token responses continue to use `Cache-Control: no-store`.
+
+Deployment requires the new `JWT_REFRESH_ENCRYPTION_KEY` environment variable. Generate a random 32-byte key, Base64-encode it, and retain it in the backend environment/secrets mechanism. Missing, malformed, or wrong-length keys stop startup with a generic error that does not expose the key. Old signed-but-unencrypted refresh tokens are deliberately rejected; users with those tokens must log in again. Existing access tokens retain their original lifetime. No schema change or deletion of existing sessions is needed for this change.
 ## Database migration
 
 `db/changelog/v1.1/016-auth-integrity.yaml` adds only necessary integrity and ID generation:
@@ -144,11 +158,12 @@ Migration preconditions stop if duplicate usernames or refresh hashes already ex
 | Environment variable | Required/default | Meaning |
 |---|---|---|
 | `JWT_SECRET` | Required | Random secret, at least 32 UTF-8 bytes; interpreted as raw UTF-8, not Base64-decoded |
+| `JWT_REFRESH_ENCRYPTION_KEY` | Required | Base64 encoding of exactly 32 random bytes; independent AES-256 key, backend only |
 | `JWT_ACCESS_EXPIRATION` | `900000` | Access lifetime in milliseconds (15 minutes) |
 | `JWT_REFRESH_EXPIRATION` | `604800000` | Refresh lifetime in milliseconds (7 days) |
 | `RUN_APPLICATION_INTEGRATION_TESTS` | Unset | Set `true` only to opt into the original full application context test with configured services |
 
-Existing property names remain `app.jwt.secret`, `app.jwt.expiration`, and `app.jwt.refresh-expiration`. The previous 24-hour defaults can be retained explicitly with `JWT_ACCESS_EXPIRATION=86400000` and `JWT_REFRESH_EXPIRATION=86400000`. All application instances must share the signing secret; changing it invalidates existing signed tokens.
+Existing property names remain `app.jwt.secret`, `app.jwt.expiration`, and `app.jwt.refresh-expiration`. The previous 24-hour defaults can be retained explicitly with `JWT_ACCESS_EXPIRATION=86400000` and `JWT_REFRESH_EXPIRATION=86400000`. All application instances must share both secrets. Changing `JWT_SECRET` invalidates existing access tokens; changing `JWT_REFRESH_ENCRYPTION_KEY` invalidates existing refresh tokens. Keep the encryption key independent from the signing secret.
 
 For a temporary development secret in PowerShell, generate it without printing it:
 
@@ -157,6 +172,9 @@ $bytes = New-Object byte[] 48
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
 $rng.GetBytes($bytes)
 $env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+$refreshKeyBytes = New-Object byte[] 32
+$rng.GetBytes($refreshKeyBytes)
+$env:JWT_REFRESH_ENCRYPTION_KEY = [Convert]::ToBase64String($refreshKeyBytes)
 $rng.Dispose()
 $env:JWT_ACCESS_EXPIRATION = '900000'
 $env:JWT_REFRESH_EXPIRATION = '604800000'
@@ -268,8 +286,8 @@ No live AWS/R2/Redis/SMTP services or real credentials were used. No existing ap
 | `src/main/java/fptu/exe202/signify/signifybe/auth/api/dto/UserResponse.java` | Basic profile DTO that never exposes persistence entities or hashes. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/AuthResult.java` | Application result combining a profile and token pair. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/AuthService.java` | Transactional registration, login, refresh rotation, revocation, and profile lookup. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/application/JwtProperties.java` | Typed configuration under the existing app.jwt prefix; redacts the signing secret. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/application/JwtService.java` | JJWT signing/validation, token-type separation, and SHA-256 refresh hashing. |
+| `src/main/java/fptu/exe202/signify/signifybe/auth/application/JwtProperties.java` | Typed configuration under the existing app.jwt prefix; redacts signing and encryption keys. |
+| `src/main/java/fptu/exe202/signify/signifybe/auth/application/JwtService.java` | JJWT access signing, refresh JWE encryption/decryption, token-type separation, and SHA-256 refresh hashing. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/TokenPair.java` | Provider-independent application token result with redacted debug output. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/port/out/AccountRepository.java` | Application port for account lookup, locking, uniqueness checks, and insertion. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/port/out/UserRepository.java` | Application port for existing users-table persistence. |
