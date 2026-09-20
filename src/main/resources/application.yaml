@@ -13,14 +13,11 @@ spring:
     hibernate:
       ddl-auto: validate
 
-  cloudflare:
-    r2:
-      access-key-id: ${R2_ACCESS_KEY}
-      secret-key-id: ${R2_SECRET_KEY}
-      account-id: ${R2_ACCOUNT_ID}
-      end-point: ${R2_END_POINT}
-      bucket-name: ${R2_BUCKET_NAME}
-      public-base-url: ${R2_PUBLIC_BASE_URL}
+  servlet:
+    multipart:
+      max-file-size: ${storage.image.max-size}B
+      # Includes multipart headers and boundaries; keep greater than max-file-size.
+      max-request-size: ${STORAGE_MULTIPART_MAX_REQUEST_SIZE:6MB}
 
   data:
     redis:
@@ -31,8 +28,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${SMTP_MAIL_USERNAME}
+    password: ${SMTP_MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -53,3 +50,18 @@ app:
     refresh-expiration: 86400000
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+storage:
+  provider: ${STORAGE_PROVIDER:s3}
+  public-base-url: ${R2_PUBLIC_BASE_URL:}
+  presigned-url-duration: ${STORAGE_PRESIGNED_URL_DURATION:15m}
+
+  image:
+    max-size: ${STORAGE_IMAGE_MAX_SIZE:5242880}
+
+  r2:
+    bucket: ${R2_BUCKET:}
+    endpoint: ${R2_ENDPOINT:}
+    region: ${R2_REGION:auto}
+    access-key: ${R2_ACCESS_KEY:}
+    secret-key: ${R2_SECRET_KEY:}
