@@ -50,7 +50,7 @@ class UserServiceTest {
     }
 
     @Test void registrationCreatesUserAccountAndHashedSession() {
-        when(users.insertUser(any())).thenReturn(user);
+        when(users.addUser(any())).thenReturn(user);
         when(accounts.insertAccount(any())).thenAnswer(call -> call.getArgument(0));
         var result = service.register("test-user", "password123", null, "Test", "User", metadata);
         var created = ArgumentCaptor.forClass(Account.class);

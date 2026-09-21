@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface UserRepository {
     Optional<User> findUserById(long userId);
-    User insertUser(User user);
+    User addUser(User user);
 }
