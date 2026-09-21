@@ -12,11 +12,14 @@ import fptu.exe202.signify.signifybe.features.user.domain.exception.UserExceptio
 import fptu.exe202.signify.signifybe.features.user.domain.UserProfile;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import fptu.exe202.signify.signifybe.features.auth.infrastructure.security.AuthConfiguration;
+import fptu.exe202.signify.signifybe.features.auth.mapper.AuthMapperImpl;
 import fptu.exe202.signify.signifybe.config.CorsConfig;
 import fptu.exe202.signify.signifybe.config.SecurityConfig;
 import fptu.exe202.signify.signifybe.features.security.ApiSecurityErrorHandler;
 import fptu.exe202.signify.signifybe.features.storage.api.StorageController;
 import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.storage.mapper.StorageMapperImpl;
+import fptu.exe202.signify.signifybe.features.user.mapper.UserMapperImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -40,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ImportAutoConfiguration(ApiResponseAutoConfiguration.class)
 @WebMvcTest(controllers = {AuthController.class, UserController.class, StorageController.class, AuthSecurityWebTest.RoleProbe.class})
 @Import({SecurityConfig.class, CorsConfig.class, JwtService.class, AuthConfiguration.class, ApiSecurityErrorHandler.class,
-        AuthSecurityWebTest.RoleProbe.class})
+        AuthMapperImpl.class, UserMapperImpl.class, StorageMapperImpl.class, AuthSecurityWebTest.RoleProbe.class})
 class AuthSecurityWebTest {
     private static final String ENCRYPTION_KEY = java.util.Base64.getEncoder()
             .encodeToString(io.jsonwebtoken.Jwts.ENC.A256GCM.key().build().getEncoded());

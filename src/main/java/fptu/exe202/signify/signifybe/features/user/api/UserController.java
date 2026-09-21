@@ -6,6 +6,7 @@ import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.user.api.dto.RegisterRequest;
 import fptu.exe202.signify.signifybe.features.user.api.dto.UserResponse;
 import fptu.exe202.signify.signifybe.features.user.application.UserService;
+import fptu.exe202.signify.signifybe.features.auth.mapper.AuthMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -25,18 +26,20 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     UserService userService;
+    UserMapper userMapper;
+    AuthMapper authMapper;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request,
                                                               HttpServletRequest http) {
         var result = userService.register(request.username(), request.password(), request.email(),
                 request.firstName(), request.lastName(), metadata(http, null));
-        return noStore(ApiResponse.success("Account registered successfully", AuthResponse.from(result)));
+        return noStore(ApiResponse.success("Account registered successfully", authMapper.toAuthResponse(result)));
     }
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> me(@AuthenticationPrincipal CurrentUser user) {
-        return noStore(ApiResponse.success(UserMapper.toResponse(userService.me(user.userId()))));
+        return noStore(ApiResponse.success(userMapper.toResponse(userService.me(user.userId()))));
     }
     private SessionMetadata metadata(HttpServletRequest request, String deviceName) {
         return new SessionMetadata(deviceName, request.getRemoteAddr(), request.getHeader("User-Agent"));

@@ -1,11 +1,11 @@
 package fptu.exe202.signify.signifybe.features.auth.api;
 
 import fptu.exe202.signify.apiresponse.response.ApiResponse;
-import fptu.exe202.signify.signifybe.auth.api.dto.*;
 import fptu.exe202.signify.signifybe.features.auth.api.dto.*;
 import fptu.exe202.signify.signifybe.features.auth.application.AuthService;
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
+import fptu.exe202.signify.signifybe.features.auth.mapper.AuthMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -22,18 +22,19 @@ import org.springframework.web.bind.annotation.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthController {
     AuthService authService;
+    AuthMapper authMapper;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request,
                                                            HttpServletRequest http) {
-        return noStore(ApiResponse.success("Login successful", AuthResponse.from(
+        return noStore(ApiResponse.success("Login successful", authMapper.toAuthResponse(
                 authService.login(request.username(), request.password(), metadata(http, request.deviceName())))));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenResponse>> refresh(@Valid @RequestBody RefreshTokenRequest request,
                                                               HttpServletRequest http) {
-        return noStore(ApiResponse.success(TokenResponse.from(authService.refresh(request.refreshToken(), metadata(http, null)))));
+        return noStore(ApiResponse.success(authMapper.toTokenResponse(authService.refresh(request.refreshToken(), metadata(http, null)))));
     }
 
     @PostMapping("/logout")

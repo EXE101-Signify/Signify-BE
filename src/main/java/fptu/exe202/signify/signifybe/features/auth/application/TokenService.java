@@ -1,6 +1,5 @@
 package fptu.exe202.signify.signifybe.features.auth.application;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSessionRepository;
-import fptu.exe202.signify.signifybe.auth.domain.*;
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
 import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
 import fptu.exe202.signify.signifybe.features.auth.domain.UserSession;

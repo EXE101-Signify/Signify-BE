@@ -5,6 +5,7 @@ import fptu.exe202.signify.signifybe.features.storage.api.dto.DeleteImageRequest
 import fptu.exe202.signify.signifybe.features.storage.api.dto.PresignedUrlResponse;
 import fptu.exe202.signify.signifybe.features.storage.api.dto.UploadImageResponse;
 import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.storage.mapper.StorageMapper;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +21,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class StorageController {
 
     StorageService storageService;
+    StorageMapper storageMapper;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<UploadImageResponse> upload(@RequestPart("file") MultipartFile file) {
         var image = storageService.uploadImage(file);
-        return ApiResponse.success("Image uploaded successfully",
-                new UploadImageResponse(image.key(), image.url(), image.contentType(), image.size()));
+        return ApiResponse.success("Image uploaded successfully", storageMapper.toUploadImageResponse(image));
     }
 
     @DeleteMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -36,6 +37,6 @@ public class StorageController {
 
     @GetMapping("/url")
     public ApiResponse<PresignedUrlResponse> url(@RequestParam("key") String key) {
-        return ApiResponse.success(new PresignedUrlResponse(storageService.generateUrl(key)));
+        return ApiResponse.success(storageMapper.toPresignedUrlResponse(storageService.generateUrl(key)));
     }
 }
