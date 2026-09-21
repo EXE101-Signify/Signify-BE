@@ -1,8 +1,17 @@
 package fptu.exe202.signify.signifybe.auth.application;
 
-import fptu.exe202.signify.signifybe.auth.application.port.out.*;
-import fptu.exe202.signify.signifybe.auth.domain.*;
-import fptu.exe202.signify.signifybe.auth.domain.exception.AuthException;
+import fptu.exe202.signify.signifybe.features.auth.application.AuthService;
+import fptu.exe202.signify.signifybe.features.auth.application.JwtProperties;
+import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
+import fptu.exe202.signify.signifybe.features.auth.application.TokenService;
+import fptu.exe202.signify.signifybe.features.auth.application.port.out.AccountRepository;
+import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSessionRepository;
+import fptu.exe202.signify.signifybe.features.auth.domain.Account;
+import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
+import fptu.exe202.signify.signifybe.features.auth.domain.UserSession;
+import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
+import fptu.exe202.signify.signifybe.features.user.domain.User;
+import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,7 +41,7 @@ class AuthServiceTest {
     private Account account;
 
     @BeforeEach void setUp() {
-        service = new AuthService(accounts, users, sessions, encoder, jwt, clock);
+        service = new AuthService(accounts, users, sessions, encoder, jwt, clock, new TokenService(sessions, jwt, clock));
         user = new User(null, "Test", "User", clock.millis());
         ReflectionTestUtils.setField(user, "id", 42L);
         account = new Account(42, "test-user", encoder.encode("password123"), clock.millis());
@@ -48,35 +57,6 @@ class AuthServiceTest {
         assertThat(first).isNotEqualTo("password123").isNotEqualTo(encoder.encode("password123"));
         assertThat(encoder.matches("password123", first)).isTrue();
         assertThat(encoder.matches("incorrect", first)).isFalse();
-    }
-
-    @Test void registrationCreatesUserAccountAndHashedSession() {
-        when(users.insertUser(any())).thenReturn(user);
-        when(accounts.insertAccount(any())).thenAnswer(call -> call.getArgument(0));
-        var result = service.register("test-user", "password123", null, "Test", "User", metadata);
-        var created = ArgumentCaptor.forClass(Account.class);
-        verify(accounts).insertAccount(created.capture());
-        assertThat(encoder.matches("password123", created.getValue().getPasswordHash())).isTrue();
-        assertThat(created.getValue().getRole()).isEqualTo(Role.USER);
-        assertThat(created.getValue().isActive()).isTrue();
-        var session = ArgumentCaptor.forClass(UserSession.class);
-        verify(sessions).saveSession(session.capture());
-        assertThat(session.getValue().getRefreshTokenHash()).isEqualTo(jwt.hashRefreshToken(result.tokens().refreshToken()));
-        assertThat(session.getValue().getRefreshTokenHash()).doesNotContain(result.tokens().refreshToken());
-        assertThat(session.getValue().getIpAddress()).isEqualTo("127.0.0.1");
-    }
-
-    @Test void duplicateUsernameDoesNotCreateRecords() {
-        when(accounts.usernameExists("test-user")).thenReturn(true);
-        assertThatThrownBy(() -> service.register("test-user", "password123", null, null, null, metadata))
-                .isInstanceOf(AuthException.class).hasMessage("Username already exists");
-        verifyNoInteractions(users, sessions);
-    }
-
-    @Test void rejectsPasswordsExceedingBcryptByteLimit() {
-        assertThatThrownBy(() -> service.register("test-user", "\u00e9".repeat(37), null, null, null, metadata))
-                .isInstanceOf(AuthException.class);
-        verifyNoInteractions(users, accounts, sessions);
     }
 
     @Test void loginCreatesTokens() {
@@ -175,9 +155,4 @@ class AuthServiceTest {
         verify(sessions).revokeAll(42, clock.millis());
     }
 
-    @Test void meReturnsOnlyBasicProfile() {
-        when(accounts.findAccountByUserId(42)).thenReturn(Optional.of(account));
-        when(users.findUserById(42)).thenReturn(Optional.of(user));
-        assertThat(service.me(42).username()).isEqualTo("test-user");
-    }
 }

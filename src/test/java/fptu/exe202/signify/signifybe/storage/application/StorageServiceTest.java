@@ -1,7 +1,9 @@
 package fptu.exe202.signify.signifybe.storage.application;
 
-import fptu.exe202.signify.signifybe.storage.application.port.out.ObjectStorage;
-import fptu.exe202.signify.signifybe.storage.domain.*;
+import fptu.exe202.signify.signifybe.features.storage.application.ImageProperties;
+import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.storage.application.port.out.ObjectStorage;
+import fptu.exe202.signify.signifybe.features.storage.domain.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

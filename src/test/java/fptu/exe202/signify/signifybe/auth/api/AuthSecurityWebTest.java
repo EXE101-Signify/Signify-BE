@@ -1,16 +1,22 @@
 package fptu.exe202.signify.signifybe.auth.api;
 
 import fptu.exe202.signify.apiresponse.config.ApiResponseAutoConfiguration;
+import fptu.exe202.signify.signifybe.features.auth.api.AuthController;
+import fptu.exe202.signify.signifybe.features.auth.application.*;
+import fptu.exe202.signify.signifybe.features.auth.domain.Role;
+import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import fptu.exe202.signify.signifybe.auth.application.*;
-import fptu.exe202.signify.signifybe.auth.domain.*;
-import fptu.exe202.signify.signifybe.auth.domain.exception.AuthException;
-import fptu.exe202.signify.signifybe.auth.infrastructure.security.AuthConfiguration;
+import fptu.exe202.signify.signifybe.features.user.api.UserController;
+import fptu.exe202.signify.signifybe.features.user.application.UserService;
+import fptu.exe202.signify.signifybe.features.user.domain.exception.UserException;
+import fptu.exe202.signify.signifybe.features.user.domain.UserProfile;
+import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
+import fptu.exe202.signify.signifybe.features.auth.infrastructure.security.AuthConfiguration;
 import fptu.exe202.signify.signifybe.config.CorsConfig;
 import fptu.exe202.signify.signifybe.config.SecurityConfig;
-import fptu.exe202.signify.signifybe.security.ApiSecurityErrorHandler;
-import fptu.exe202.signify.signifybe.storage.api.StorageController;
-import fptu.exe202.signify.signifybe.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.security.ApiSecurityErrorHandler;
+import fptu.exe202.signify.signifybe.features.storage.api.StorageController;
+import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -32,7 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ImportAutoConfiguration(ApiResponseAutoConfiguration.class)
-@WebMvcTest(controllers = {AuthController.class, StorageController.class, AuthSecurityWebTest.RoleProbe.class})
+@WebMvcTest(controllers = {AuthController.class, UserController.class, StorageController.class, AuthSecurityWebTest.RoleProbe.class})
 @Import({SecurityConfig.class, CorsConfig.class, JwtService.class, AuthConfiguration.class, ApiSecurityErrorHandler.class,
         AuthSecurityWebTest.RoleProbe.class})
 class AuthSecurityWebTest {
@@ -42,6 +48,7 @@ class AuthSecurityWebTest {
     @Autowired private MockMvc mvc;
     @Autowired private JwtService jwt;
     @MockitoBean private AuthService authService;
+    @MockitoBean private UserService userService;
     @MockitoBean private StorageService storageService;
 
     @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) {
@@ -78,7 +85,7 @@ class AuthSecurityWebTest {
         var expired = new JwtService(new JwtProperties(SECRET, ENCRYPTION_KEY, 1000, 604800000),
                 Clock.fixed(Instant.now().minusSeconds(120), ZoneOffset.UTC)).createAccessToken(42, Role.USER).value();
         for (String token : new String[]{"invalid", expired, jwt.createRefreshToken(42).value()}) {
-            mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
+            mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                     .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.success").value(false));
         }
         verifyNoInteractions(authService);
@@ -91,9 +98,9 @@ class AuthSecurityWebTest {
     }
 
     @Test void registerIsPublicValidatedAndUsesStandardResponse() throws Exception {
-        when(authService.register(eq("test-user"), eq("password123"), isNull(), isNull(), isNull(), any()))
+        when(userService.register(eq("test-user"), eq("password123"), isNull(), isNull(), isNull(), any()))
                 .thenReturn(authResult());
-        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"test-user\",\"password\":\"password123\",\"role\":\"ADMIN\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.status").value(200)).andExpect(jsonPath("$.data.user.role").value("USER"))
@@ -104,7 +111,7 @@ class AuthSecurityWebTest {
     }
 
     @Test void validationErrorsUseExistingGlobalHandler() throws Exception {
-        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"\",\"password\":\"short\",\"email\":\"invalid\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.errors.username").exists()).andExpect(jsonPath("$.errors.password").exists());
@@ -113,7 +120,7 @@ class AuthSecurityWebTest {
 
     @Test void loginUsesSocketAddressRatherThanForwardedIp() throws Exception {
         when(authService.login(anyString(), anyString(), any())).thenReturn(authResult());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"test-user\",\"password\":\"password123\",\"deviceName\":\"Laptop\"}")
                         .header("X-Forwarded-For", "1.2.3.4").header("User-Agent", "test-agent")
                         .with(request -> { request.setRemoteAddr("127.0.0.2"); return request; }))
@@ -122,19 +129,19 @@ class AuthSecurityWebTest {
     }
 
     @Test void duplicateAndInvalidCredentialsUseExistingExceptionEnvelope() throws Exception {
-        when(authService.register(anyString(), anyString(), any(), any(), any(), any())).thenThrow(AuthException.usernameTaken());
-        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+        when(userService.register(anyString(), anyString(), any(), any(), any(), any())).thenThrow(UserException.usernameTaken());
+        mvc.perform(post("/api/users/register").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"test-user\",\"password\":\"password123\"}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("Username already exists"));
         when(authService.login(anyString(), anyString(), any())).thenThrow(AuthException.invalidCredentials());
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"test-user\",\"password\":\"incorrect\"}"))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.message").value("Invalid username or password"));
     }
 
     @Test void refreshIsPublicAndDoesNotRequireAccessToken() throws Exception {
         when(authService.refresh(eq("refresh-token"), any())).thenReturn(authResult().tokens());
-        mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"refreshToken\":\"refresh-token\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.accessToken").exists())
                 .andExpect(encryptedRefresh("$.data.refreshToken"))
@@ -142,22 +149,22 @@ class AuthSecurityWebTest {
     }
 
     @Test void meAndBothLogoutEndpointsAreProtected() throws Exception {
-        mvc.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/v1/auth/logout").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(get("/api/users/me")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/logout").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"refreshToken\":\"token\"}")).andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/v1/auth/logout-all")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/logout-all")).andExpect(status().isUnauthorized());
         verifyNoInteractions(authService);
     }
 
     @Test void authenticatedRequestsUseJwtIdentity() throws Exception {
-        when(authService.me(42)).thenReturn(profile());
-        mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(Role.USER)))
+        when(userService.me(42)).thenReturn(profile());
+        mvc.perform(get("/api/users/me").header("Authorization", bearer(Role.USER)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.userId").value(42));
-        mvc.perform(post("/api/v1/auth/logout").header("Authorization", bearer(Role.USER))
+        mvc.perform(post("/api/auth/logout").header("Authorization", bearer(Role.USER))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"refreshToken\":\"token\",\"userId\":999}"))
                 .andExpect(status().isOk());
         verify(authService).logout(42, "token");
-        mvc.perform(post("/api/v1/auth/logout-all").header("Authorization", bearer(Role.USER)))
+        mvc.perform(post("/api/auth/logout-all").header("Authorization", bearer(Role.USER)))
                 .andExpect(status().isOk());
         verify(authService).logoutAll(42);
     }

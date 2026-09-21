@@ -1,8 +1,8 @@
 package fptu.exe202.signify.signifybe.config;
 
-import fptu.exe202.signify.signifybe.auth.application.JwtService;
-import fptu.exe202.signify.signifybe.security.ApiSecurityErrorHandler;
-import fptu.exe202.signify.signifybe.security.JwtAuthenticationFilter;
+import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
+import fptu.exe202.signify.signifybe.features.security.ApiSecurityErrorHandler;
+import fptu.exe202.signify.signifybe.features.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,8 +23,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private static final String[] PUBLIC_AUTH_ENDPOINTS = {
-            "/api/auth/register", "/api/auth/login", "/api/auth/refresh"
+    private static final String[] PUBLIC_ACCOUNT_ENDPOINTS = {
+            "/api/users/register", "/api/auth/login", "/api/auth/refresh"
     };
     private static final String[] SWAGGER_ENDPOINTS = {
             "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"
@@ -42,7 +42,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, PUBLIC_AUTH_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_ACCOUNT_ENDPOINTS).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                         .anyRequest().authenticated())

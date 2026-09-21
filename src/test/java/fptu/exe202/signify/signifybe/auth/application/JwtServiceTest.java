@@ -1,7 +1,9 @@
 package fptu.exe202.signify.signifybe.auth.application;
 
-import fptu.exe202.signify.signifybe.auth.domain.Role;
-import fptu.exe202.signify.signifybe.auth.domain.exception.AuthException;
+import fptu.exe202.signify.signifybe.features.auth.application.JwtProperties;
+import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
+import fptu.exe202.signify.signifybe.features.auth.domain.Role;
+import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
@@ -155,7 +157,10 @@ class JwtServiceTest {
     }
 
     @Test void rejectsMissingMalformedAndWrongLengthEncryptionKeysWithoutExposingValues() {
-        for (String invalid : new String[]{null, "", "not-base64!", java.util.Base64.getEncoder().encodeToString(new byte[16])}) {
+        for (String invalid : new String[]{null, "", "   ", "not-base64!", "\"" + ENCRYPTION_KEY + "\"",
+                java.util.Base64.getEncoder().encodeToString(new byte[16]),
+                java.util.Base64.getEncoder().encodeToString(new byte[31]),
+                java.util.Base64.getEncoder().encodeToString(new byte[33])}) {
             assertThatThrownBy(() -> new JwtService(new JwtProperties(secret, invalid, 900000, 604800000), Clock.systemUTC()))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessage("JWT_REFRESH_ENCRYPTION_KEY must be Base64 encoding of exactly 32 random bytes")

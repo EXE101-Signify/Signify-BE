@@ -5,48 +5,19 @@ Authentication uses Java 17, the existing Spring Security configuration, JJWT 0.
 ## Architecture and dependency flow
 
 ```text
-fptu.exe202.signify.signifybe
-├── auth
-│   ├── api
-│   │   ├── AuthController.java
-│   │   └── dto
-│   │       ├── RegisterRequest.java
-│   │       ├── LoginRequest.java
-│   │       ├── RefreshTokenRequest.java
-│   │       ├── LogoutRequest.java
-│   │       ├── AuthResponse.java
-│   │       ├── TokenResponse.java
-│   │       └── UserResponse.java
-│   ├── application
-│   │   ├── AuthService.java
-│   │   ├── JwtService.java
-│   │   ├── JwtProperties.java
-│   │   ├── AuthResult.java
-│   │   ├── TokenPair.java
-│   │   └── port/out
-│   │       ├── AccountRepository.java
-│   │       ├── UserRepository.java
-│   │       └── UserSessionRepository.java
-│   ├── domain
-│   │   ├── Account.java
-│   │   ├── User.java
-│   │   ├── UserSession.java
-│   │   ├── Role.java
-│   │   ├── CurrentUser.java
-│   │   ├── UserProfile.java
-│   │   ├── SessionMetadata.java
-│   │   └── exception/AuthException.java
-│   └── infrastructure
-│       ├── persistence
-│       │   ├── JpaAccountRepository.java
-│       │   ├── JpaUserRepository.java
-│       │   ├── JpaUserSessionRepository.java
-│       │   └── JpaAuthPersistence.java
-│       └── security/AuthConfiguration.java
-├── security
-│   ├── JwtAuthenticationFilter.java
-│   └── ApiSecurityErrorHandler.java
-└── config/SecurityConfig.java
+auth/
+  api/                     Login, refresh, logout and auth/token DTOs
+  application/             AuthService, JwtService, TokenService and account/session ports
+  domain/                  Account, Role, CurrentUser, UserSession and auth errors
+  infrastructure/          Account/session persistence and JWT configuration
+user/
+  api/                     Registration, current profile and user DTOs
+  application/             UserService and UserRepository port
+  domain/                  User, UserProfile and registration errors
+  infrastructure/          JpaUserPersistence and JpaUserRepository
+  mapper/                  UserMapper
+security/                  JWT filter and API security error handler
+config/SecurityConfig.java
 ```
 
 `AuthController → AuthService → repository ports ← JpaAuthPersistence → Spring Data JPA → PostgreSQL`.
@@ -57,16 +28,16 @@ Domain objects are also JPA entities; there are no duplicate `AccountEntity`/`Ac
 
 ## API contract
 
-All routes are under `/api/v1/auth`. Requests and responses use JSON.
+Authentication routes are under `/api/auth`; registration and profiles are under `/api/users`. Requests and responses use JSON.
 
 | Method | Route | Authentication | Result in `data` |
 |---|---|---|---|
-| POST | `/register` | Public | `{ user, tokens }` |
-| POST | `/login` | Public | `{ user, tokens }` |
-| POST | `/refresh` | Refresh token in body | Replacement token pair |
-| POST | `/logout` | Access token + refresh token in body | No data; session revoked |
-| POST | `/logout-all` | Access token | No data; all user sessions revoked |
-| GET | `/me` | Access token | Basic user profile |
+| POST | `/api/users/register` | Public | `{ user, tokens }` |
+| POST | `/api/auth/login` | Public | `{ user, tokens }` |
+| POST | `/api/auth/refresh` | Refresh token in body | Replacement token pair |
+| POST | `/api/auth/logout` | Access token + refresh token in body | No data; session revoked |
+| POST | `/api/auth/logout-all` | Access token | No data; all user sessions revoked |
+| GET | `/api/users/me` | Access token | Basic user profile |
 
 Successful responses use HTTP 200, consistently with `doc/standard-api-response.md`:
 
@@ -181,7 +152,77 @@ $env:JWT_REFRESH_EXPIRATION = '604800000'
 ./gradlew.bat bootRun
 ```
 
-For normal operation, supply a stable secret through the existing environment/secrets mechanism. Keep the existing database, selected storage provider, SMTP and PayOS settings configured. Spring Boot/Gradle do not automatically load the repository's `.env`; use the existing IDE/environment loader. No `.env` file is read or modified by this implementation. Java toolchain remains **17**.
+For normal operation, supply stable secrets through the deployment environment/secrets mechanism. Keep the existing database, selected storage provider, SMTP and PayOS settings configured. Java toolchain remains **17**.
+
+### Local .env configuration
+
+Spring Boot does not discover a .env file by default. application.yaml explicitly imports
+`optional:file:./.env[.properties]` using Spring Boot Config Data, without an extra dependency.
+Run from the project root (also set the IDE working directory to the project root).
+OS environment variables override the file, including an explicitly empty value.
+The file is optional so deployments can provide environment variables without a .env file;
+the refresh key itself remains required and startup fails if it is missing or invalid.
+
+The configuration path is:
+`JWT_REFRESH_ENCRYPTION_KEY → app.jwt.refresh-encryption-key → JwtProperties.refreshEncryptionKey → JwtService`.
+The empty placeholder default `${JWT_REFRESH_ENCRYPTION_KEY:}` intentionally lets JwtService
+report its existing clear error for both missing and empty configuration. It is not a usable default key.
+
+The imported file uses Java properties syntax: one KEY=value per line, no shell-style quotes,
+no export prefix, and no inline comments after values. Quotes become part of the value.
+Backslashes have Java properties escape semantics. Keep .env outside src/main/resources.
+
+Generate a refresh key once in PowerShell 7:
+
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+On Windows PowerShell 5.1, use RandomNumberGenerator.Create() and GetBytes($bytes)
+as in the example above if the Fill method is unavailable.
+Put the generated result in the Git-ignored root .env, with no surrounding quotes:
+
+```env
+JWT_REFRESH_ENCRYPTION_KEY=<generated-base64-key>
+```
+
+Do not paste a normal password, reuse JWT_SECRET, generate a new key on every startup,
+or commit the generated value. The decoded key must be exactly 32 bytes.
+If supplying a process environment variable instead, use
+`$env:JWT_REFRESH_ENCRYPTION_KEY = [Convert]::ToBase64String($bytes)`.
+Clear a stale process override with `Remove-Item Env:JWT_REFRESH_ENCRYPTION_KEY`
+before relying on the .env file, and restart the application/IDE after changing its environment.
+
+Verify from the project root:
+
+```powershell
+# Check the file is ignored and not tracked (second command should have no output).
+git check-ignore .env
+git ls-files -- .env
+.\gradlew.bat clean build
+.\gradlew.bat bootRun
+```
+
+JwtConfigurationTest verifies Config Data import, environment precedence, missing/empty keys,
+and access/refresh token round trips. JwtServiceTest covers malformed/wrong-length keys,
+AES-256-GCM encryption, tampering, expiry and token-type separation.
+A full application startup additionally requires the configured PostgreSQL and other services.
+If JDK 17 on Windows fails before the build with `Unable to establish loopback connection`
+and a UnixDomainSockets stack trace, use an existing project directory for the temporary socket:
+
+```powershell
+$socketDirectory = Join-Path (Get-Location) '.gradle'
+New-Item -ItemType Directory -Force -Path $socketDirectory | Out-Null
+$env:JAVA_OPTS = '-Djdk.net.unixdomain.tmpdir="' + $socketDirectory + '"'
+.\gradlew.bat clean build
+.\gradlew.bat bootRun
+```
+
+This process-local setting only affects the Gradle launcher; it does not change JWT validation
+or the project's Java toolchain.
+
 
 ## Example requests
 
@@ -191,35 +232,35 @@ These are POSIX shell examples; Windows users can run them through Git Bash or u
 BASE=http://localhost:8080
 
 # Register; email and names may be omitted.
-curl -X POST "$BASE/api/v1/auth/register" \
+curl -X POST "$BASE/api/users/register" \
   -H 'Content-Type: application/json' \
   -d '{"username":"alice","password":"a-long-demo-password","email":"alice@example.com","firstName":"Alice"}'
 
 # Login from a device.
-curl -X POST "$BASE/api/v1/auth/login" \
+curl -X POST "$BASE/api/auth/login" \
   -H 'Content-Type: application/json' \
   -d '{"username":"alice","password":"a-long-demo-password","deviceName":"My laptop"}'
 
 # Set ACCESS_TOKEN and REFRESH_TOKEN locally from data.tokens.
 # Refresh: do not send an expired access token in the Authorization header.
-curl -X POST "$BASE/api/v1/auth/refresh" \
+curl -X POST "$BASE/api/auth/refresh" \
   -H 'Content-Type: application/json' \
   -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
 
 # Replace ACCESS_TOKEN and REFRESH_TOKEN with the new data fields before continuing.
-curl "$BASE/api/v1/auth/me" -H "Authorization: Bearer $ACCESS_TOKEN"
+curl "$BASE/api/users/me" -H "Authorization: Bearer $ACCESS_TOKEN"
 
 # Authenticated storage request uses the current, unchanged storage route.
 curl -X POST "$BASE/api/storage/images" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -F 'file=@avatar.png;type=image/png'
 
-curl -X POST "$BASE/api/v1/auth/logout" \
+curl -X POST "$BASE/api/auth/logout" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H 'Content-Type: application/json' \
   -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
 
-curl -X POST "$BASE/api/v1/auth/logout-all" \
+curl -X POST "$BASE/api/auth/logout-all" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
@@ -281,28 +322,28 @@ No live AWS/R2/Redis/SMTP services or real credentials were used. No existing ap
 | `src/main/java/fptu/exe202/signify/signifybe/auth/api/dto/LoginRequest.java` | Login and optional device-name input; redacts password-bearing debug output. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/api/dto/LogoutRequest.java` | Bounded session-revocation input with redacted debug output. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/api/dto/RefreshTokenRequest.java` | Bounded refresh-token input with redacted debug output. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/api/dto/RegisterRequest.java` | Registration input validation; redacts password-bearing debug output. |
+| `src/main/java/fptu/exe202/signify/signifybe/user/api/dto/RegisterRequest.java` | Registration input validation; redacts password-bearing debug output. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/api/dto/TokenResponse.java` | Bearer token pair and epoch-millisecond expiry DTO; redacted debug output. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/api/dto/UserResponse.java` | Basic profile DTO that never exposes persistence entities or hashes. |
+| `src/main/java/fptu/exe202/signify/signifybe/user/api/dto/UserResponse.java` | Basic profile DTO that never exposes persistence entities or hashes. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/AuthResult.java` | Application result combining a profile and token pair. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/application/AuthService.java` | Transactional registration, login, refresh rotation, revocation, and profile lookup. |
+| `src/main/java/fptu/exe202/signify/signifybe/auth/application/AuthService.java` | Transactional login, refresh rotation, and revocation. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/JwtProperties.java` | Typed configuration under the existing app.jwt prefix; redacts signing and encryption keys. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/JwtService.java` | JJWT access signing, refresh JWE encryption/decryption, token-type separation, and SHA-256 refresh hashing. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/TokenPair.java` | Provider-independent application token result with redacted debug output. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/port/out/AccountRepository.java` | Application port for account lookup, locking, uniqueness checks, and insertion. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/application/port/out/UserRepository.java` | Application port for existing users-table persistence. |
+| `src/main/java/fptu/exe202/signify/signifybe/user/application/port/out/UserRepository.java` | Application port for existing users-table persistence. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/application/port/out/UserSessionRepository.java` | Application port for hash lookup, session locking, persistence, and revocation. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/domain/Account.java` | JPA model of the existing account table with USER default and ACTIVE status. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/domain/CurrentUser.java` | Authenticated principal exposing the user ID and role. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/domain/Role.java` | USER/ADMIN values and consistent ROLE_ authority conversion. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/domain/SessionMetadata.java` | Bounded device, socket IP, and user-agent metadata. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/domain/User.java` | JPA model of the existing users table using BIGINT sequence IDs and soft-deletion checks. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/domain/UserProfile.java` | Safe application profile projection. |
+| `src/main/java/fptu/exe202/signify/signifybe/user/domain/User.java` | JPA model of the existing users table using BIGINT sequence IDs and soft-deletion checks. |
+| `src/main/java/fptu/exe202/signify/signifybe/user/domain/UserProfile.java` | Safe application profile projection. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/domain/UserSession.java` | JPA model of existing refresh sessions, storing only hashes and revocation metadata. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/domain/exception/AuthException.java` | Safe auth errors extending the existing response-library BaseException. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/infrastructure/persistence/JpaAccountRepository.java` | Spring Data account queries and pessimistic account locks. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/infrastructure/persistence/JpaAuthPersistence.java` | Single adapter implementing the three repository ports, without duplicate entities. |
-| `src/main/java/fptu/exe202/signify/signifybe/auth/infrastructure/persistence/JpaUserRepository.java` | Spring Data users-table access. |
+| `src/main/java/fptu/exe202/signify/signifybe/auth/infrastructure/persistence/JpaAuthPersistence.java` | Adapter implementing account and session repository ports. |
+| `src/main/java/fptu/exe202/signify/signifybe/user/infrastructure/persistence/JpaUserRepository.java` | Spring Data users-table access. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/infrastructure/persistence/JpaUserSessionRepository.java` | Spring Data session hash lookup, row locks, and bulk revocation. |
 | `src/main/java/fptu/exe202/signify/signifybe/auth/infrastructure/security/AuthConfiguration.java` | JWT property registration and injectable UTC clock. |
 | `src/main/java/fptu/exe202/signify/signifybe/security/ApiSecurityErrorHandler.java` | Standard ApiResponse JSON for filter-chain authentication and access failures. |

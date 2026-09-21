@@ -1,9 +1,19 @@
 package fptu.exe202.signify.signifybe.auth.infrastructure.persistence;
 
-import fptu.exe202.signify.signifybe.auth.application.*;
-import fptu.exe202.signify.signifybe.auth.domain.*;
-import fptu.exe202.signify.signifybe.auth.domain.exception.AuthException;
-import fptu.exe202.signify.signifybe.auth.infrastructure.security.AuthConfiguration;
+import fptu.exe202.signify.signifybe.features.auth.application.AuthService;
+import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
+import fptu.exe202.signify.signifybe.features.auth.application.TokenService;
+import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
+import fptu.exe202.signify.signifybe.features.auth.domain.UserSession;
+import fptu.exe202.signify.signifybe.features.auth.infrastructure.persistence.JpaAccountRepository;
+import fptu.exe202.signify.signifybe.features.auth.infrastructure.persistence.JpaAuthPersistence;
+import fptu.exe202.signify.signifybe.features.auth.infrastructure.persistence.JpaUserSessionRepository;
+import fptu.exe202.signify.signifybe.features.user.application.UserService;
+import fptu.exe202.signify.signifybe.features.user.infrastructure.persistence.JpaUserPersistence;
+import fptu.exe202.signify.signifybe.features.user.domain.exception.UserException;
+import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
+import fptu.exe202.signify.signifybe.features.auth.infrastructure.security.AuthConfiguration;
+import fptu.exe202.signify.signifybe.features.user.infrastructure.persistence.JpaUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,16 +33,16 @@ import java.util.UUID;
 import java.util.concurrent.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.ArgumentMatchers.*;
 
 // Liquibase maps TEXT to CLOB on H2; PostgreSQL type validation remains enabled in production.
 @DataJpaTest(properties = {"spring.jpa.hibernate.ddl-auto=none", "spring.jpa.show-sql=false"})
-@Import({JpaAuthPersistence.class, AuthService.class, JwtService.class, AuthConfiguration.class, AuthPersistenceTest.PasswordConfig.class})
+@Import({JpaUserPersistence.class, UserService.class, TokenService.class, JpaAuthPersistence.class, AuthService.class, JwtService.class, AuthConfiguration.class, AuthPersistenceTest.PasswordConfig.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class AuthPersistenceTest {
     private static final String ENCRYPTION_KEY = java.util.Base64.getEncoder()
             .encodeToString(io.jsonwebtoken.Jwts.ENC.A256GCM.key().build().getEncoded());
     @Autowired private AuthService auth;
+    @Autowired private UserService userService;
     @Autowired private JpaUserRepository users;
     @Autowired private JpaAccountRepository accounts;
     @MockitoSpyBean private JpaUserSessionRepository sessions;
@@ -52,7 +62,7 @@ class AuthPersistenceTest {
     }
 
     @Test void registrationPersistsOnlyHashesAndUsesExistingTables() {
-        var result = auth.register("persist-user", "password123", null, null, null, METADATA);
+        var result = userService.register("persist-user", "password123", null, null, null, METADATA);
         assertThat(users.count()).isEqualTo(1);
         assertThat(accounts.count()).isEqualTo(1);
         assertThat(sessions.count()).isEqualTo(1);
@@ -62,7 +72,7 @@ class AuthPersistenceTest {
     }
 
     @Test void rotationRevokesOldSessionAndLogoutAllRevokesEveryDevice() {
-        var first = auth.register("rotate-user", "password123", null, null, null, METADATA);
+        var first = userService.register("rotate-user", "password123", null, null, null, METADATA);
         var other = auth.login("rotate-user", "password123", METADATA);
         var rotated = auth.refresh(first.tokens().refreshToken(), METADATA);
         assertThat(sessions.count()).isEqualTo(3);
@@ -76,7 +86,7 @@ class AuthPersistenceTest {
     }
 
     @Test void onlyOneConcurrentRefreshCanSucceed() throws Exception {
-        var registered = auth.register("concurrent-user", "password123", null, null, null, METADATA);
+        var registered = userService.register("concurrent-user", "password123", null, null, null, METADATA);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
         Callable<Boolean> refresh = () -> {
@@ -108,9 +118,9 @@ class AuthPersistenceTest {
         Callable<Boolean> register = () -> {
             start.await();
             try {
-                auth.register("same-user", "password123", null, null, null, METADATA);
+                userService.register("same-user", "password123", null, null, null, METADATA);
                 return true;
-            } catch (AuthException expected) {
+            } catch (UserException expected) {
                 return false;
             }
         };
@@ -131,7 +141,7 @@ class AuthPersistenceTest {
 
     @Test void failedSessionCreationRollsBackUserAndAccount() {
         doThrow(new IllegalStateException("simulated persistence failure")).when(sessions).save(any(UserSession.class));
-        assertThatThrownBy(() -> auth.register("rollback-user", "password123", null, null, null, METADATA))
+        assertThatThrownBy(() -> userService.register("rollback-user", "password123", null, null, null, METADATA))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(users.count()).isZero();
         assertThat(accounts.count()).isZero();
@@ -139,7 +149,7 @@ class AuthPersistenceTest {
     }
 
     @Test void failedRotationRollsBackOldSessionRevocation() {
-        var registered = auth.register("rollback-refresh", "password123", null, null, null, METADATA);
+        var registered = userService.register("rollback-refresh", "password123", null, null, null, METADATA);
         doThrow(new IllegalStateException("simulated persistence failure")).when(sessions)
                 .save(argThat((UserSession session) -> session.getId() == null));
         assertThatThrownBy(() -> auth.refresh(registered.tokens().refreshToken(), METADATA))

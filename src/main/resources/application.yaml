@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Local KEY=value file; real environment variables take precedence.
+    import: "optional:file:./.env[.properties]"
   application:
     name: signify-be
   datasource:

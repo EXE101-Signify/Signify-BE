@@ -57,6 +57,8 @@ dependencies {
     implementation("software.amazon.awssdk:s3:2.54.18")
     // Source: https://mvnrepository.com/artifact/vn.payos/payos-java
     implementation("vn.payos:payos-java:2.0.1")
+    // Source: https://mvnrepository.com/artifact/org.mapstruct/mapstruct
+    implementation("org.mapstruct:mapstruct:1.6.3")
 }
 
 dependencyManagement {

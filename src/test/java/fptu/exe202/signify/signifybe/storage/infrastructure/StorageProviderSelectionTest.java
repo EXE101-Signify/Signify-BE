@@ -1,8 +1,11 @@
 package fptu.exe202.signify.signifybe.storage.infrastructure;
 
-import fptu.exe202.signify.signifybe.storage.application.port.out.ObjectStorage;
-import fptu.exe202.signify.signifybe.storage.infrastructure.aws.*;
-import fptu.exe202.signify.signifybe.storage.infrastructure.cloudflare.*;
+import fptu.exe202.signify.signifybe.features.storage.application.port.out.ObjectStorage;
+import fptu.exe202.signify.signifybe.features.storage.infrastructure.StorageConfiguration;
+import fptu.exe202.signify.signifybe.features.storage.infrastructure.aws.S3ObjectStorage;
+import fptu.exe202.signify.signifybe.features.storage.infrastructure.aws.S3StorageConfiguration;
+import fptu.exe202.signify.signifybe.features.storage.infrastructure.cloudflare.R2ObjectStorage;
+import fptu.exe202.signify.signifybe.features.storage.infrastructure.cloudflare.R2StorageConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import software.amazon.awssdk.services.s3.S3Client;
