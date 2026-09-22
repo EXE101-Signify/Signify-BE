@@ -38,5 +38,10 @@ public class Account {
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
     public Role getRole() { return role; }
+    public String getStatus() { return status; }
+    public void ban(long now) {
+        this.status = "BANNED";
+        this.updatedAt = now;
+    }
     public boolean isActive() { return "ACTIVE".equals(status); }
 }

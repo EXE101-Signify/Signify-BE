@@ -1,6 +1,7 @@
 package fptu.exe202.signify.signifybe.config;
 
 import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
+import fptu.exe202.signify.signifybe.features.auth.application.AccountAccessService;
 import fptu.exe202.signify.signifybe.features.security.ApiSecurityErrorHandler;
 import fptu.exe202.signify.signifybe.features.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
-                                                    ApiSecurityErrorHandler errors) throws Exception {
+                                                    ApiSecurityErrorHandler errors, AccountAccessService accountAccess) throws Exception {
         http.cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -45,8 +46,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, PUBLIC_ACCOUNT_ENDPOINTS).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated())
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService, errors), UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .anyRequest().hasAnyRole("USER", "ADMIN"))
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, errors, accountAccess), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

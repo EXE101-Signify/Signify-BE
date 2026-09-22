@@ -8,20 +8,40 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JpaUserPersistence implements UserRepository {
-    JpaUserRepository users;
+    JpaUserRepository jpaUserRepository;
+
+    @Override
+    public Optional<User> lockUserById(long userId) { return jpaUserRepository.lockById(userId); }
+
+    @Override
+    public boolean emailExistsForOtherUser(String email, long userId) {
+        return jpaUserRepository.existsByEmailAndIdNot(email, userId);
+    }
+
+    @Override
+    public Page<User> searchUsers(String search, Pageable pageable) {
+        return jpaUserRepository.searchUsers(search, pageable);
+    }
 
     @Override
     public Optional<User> findUserById(long userId) {
-        return users.findById(userId);
+        return jpaUserRepository.findById(userId);
     }
 
     @Override
     public User addUser(User user) {
-        return users.saveAndFlush(user);
+        return jpaUserRepository.saveAndFlush(user);
+    }
+
+    @Override
+    public boolean isEmailExist(String email) {
+        return jpaUserRepository.existsByEmail(email);
     }
 }

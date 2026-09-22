@@ -1,9 +1,11 @@
 package fptu.exe202.signify.signifybe.features.user.domain;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 @Entity
 @Table(name = "users")
+@Data
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_users")
@@ -44,12 +46,6 @@ public class User {
         this.updatedAt = now;
     }
 
-    public Long getId() { return id; }
-    public String getFirstName() { return firstName; }
-    public String getLastName() { return lastName; }
-    public String getFullName() { return fullName; }
-    public String getEmail() { return email; }
-    public String getAvatar() { return avatar; }
     public boolean isEmailVerified() { return Boolean.TRUE.equals(emailVerified); }
     public boolean isDeleted() { return deletedAt != null; }
 }

@@ -3,6 +3,12 @@ import fptu.exe202.signify.apiresponse.exception.BaseException;
 import org.springframework.http.HttpStatus;
 
 public final class UserException extends BaseException {
+    public static UserException notFound() {
+        return new UserException(HttpStatus.NOT_FOUND, "User not found");
+    }
+    public static UserException cannotBanSelf() {
+        return new UserException(HttpStatus.FORBIDDEN, "Administrators cannot ban themselves");
+    }
     private UserException(HttpStatus status, String message) { super(status, message); }
     public static UserException usernameTaken() {
         return new UserException(HttpStatus.CONFLICT, "Username already exists");

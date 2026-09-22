@@ -20,7 +20,7 @@ public class TokenService {
     }
     @Transactional(propagation = Propagation.MANDATORY)
     public TokenPair issueTokens(Account account, SessionMetadata metadata) {
-        var access = jwtService.createAccessToken(account.getUserId(), account.getRole());
+        var access = jwtService.createAccessToken(account.getUserId(), account.getUsername(), account.getRole());
         var refresh = jwtService.createRefreshToken(account.getUserId());
         sessions.saveSession(new UserSession(account.getUserId(), jwtService.hashRefreshToken(refresh.value()),
                 metadata, clock.millis(), refresh.expiresAt()));

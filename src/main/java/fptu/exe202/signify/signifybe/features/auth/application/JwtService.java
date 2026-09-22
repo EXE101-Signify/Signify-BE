@@ -17,10 +17,11 @@ import java.time.Clock;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 public class JwtService {
-    private static final String ISSUER = "signify-be";
     private final SecretKey key;
     private final SecretKey refreshEncryptionKey;
     private final JwtParser refreshParser;
@@ -38,16 +39,21 @@ public class JwtService {
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.refreshEncryptionKey = readEncryptionKey(properties.refreshEncryptionKey());
-        this.refreshParser = Jwts.parser().decryptWith(refreshEncryptionKey).requireIssuer(ISSUER)
+        this.refreshParser = Jwts.parser().decryptWith(refreshEncryptionKey).requireIssuer(properties.issuer())
                 .clock(() -> Date.from(clock.instant())).build();
-        this.parser = Jwts.parser().verifyWith(key).requireIssuer(ISSUER)
+        this.parser = Jwts.parser().verifyWith(key).requireIssuer(properties.issuer())
                 .clock(() -> Date.from(clock.instant())).build();
     }
 
-    public IssuedToken createAccessToken(long userId, Role role) {
+    public IssuedToken createAccessToken(long userId, String username, Role role) {
+        if (userId <= 0 || username == null || username.isBlank() || role == null) {
+            throw new IllegalArgumentException("Access tokens require a persisted user, username and role");
+        }
         long now = clock.millis();
         long expiresAt = Math.addExact(now, properties.expiration()) / 1000 * 1000;
         String token = builder(userId, "access", now, expiresAt)
+                .claim("username", username).claim("roles", List.of(role.name()))
+                .audience().add(properties.audience()).and().id(UUID.randomUUID().toString())
                 .claim("role", role.name()).signWith(key, Jwts.SIG.HS256).compact();
         return new IssuedToken(token, expiresAt);
     }
@@ -66,6 +72,9 @@ public class JwtService {
     public CurrentUser validateAccessToken(String token) {
         try {
             Claims claims = parse(token, "access");
+            if (claims.containsKey("aud") && !claims.getAudience().contains(properties.audience())) {
+                throw new IllegalArgumentException();
+            }
             return new CurrentUser(userId(claims), Role.valueOf(claims.get("role", String.class)));
         } catch (JwtException | IllegalArgumentException | NullPointerException ex) {
             throw AuthException.invalidAccessToken();
@@ -100,7 +109,7 @@ public class JwtService {
     }
 
     private JwtBuilder builder(long userId, String type, long now, long expiresAt) {
-        return Jwts.builder().issuer(ISSUER).subject(Long.toString(userId)).claim("type", type)
+        return Jwts.builder().issuer(properties.issuer()).subject(Long.toString(userId)).claim("type", type)
                 .issuedAt(new Date(now)).expiration(new Date(expiresAt));
     }
 

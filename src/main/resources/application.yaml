@@ -48,6 +48,8 @@ spring:
 # JWT
 app:
   jwt:
+    issuer: ${JWT_ISSUER:signify-be}
+    audience: ${JWT_AUDIENCE:signify-client}
     secret: ${JWT_SECRET}
     refresh-encryption-key: ${JWT_REFRESH_ENCRYPTION_KEY:}
     expiration: ${JWT_ACCESS_EXPIRATION:900000}

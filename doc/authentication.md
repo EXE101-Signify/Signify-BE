@@ -79,11 +79,27 @@ Passwords must be at least eight characters and at most 72 UTF-8 bytes, respecti
 
 ### JWT access tokens
 
-Access JWTs contain `iss=signify-be`, `sub=<BIGINT user ID>`, `role=USER|ADMIN`, `type=access`, `iat`, and `exp`. Only HS256 signed access tokens are accepted by the request filter. Signature, issuer, expiry, issuance time, type, subject, and role are validated using the existing [JJWT library](https://github.com/jwtk/jjwt/tree/0.12.6).
+Access JWTs contain `sub=<BIGINT user ID>`, the persisted account's `username`, `roles=[USER|ADMIN]`, `iat`, `exp`, configured `iss` and `aud`, and a new UUID `jti` for every access token. Existing `role=USER|ADMIN` and `type=access` claims are retained for compatibility. The current database has no user UUID; `sub` deliberately remains the actual database Long ID, serialized as a string. No database migration is required.
+
+Only HS256 signed access tokens are accepted by the request filter. Signature, issuer, expiry, issuance time, type, subject, and role are validated using the existing JJWT library. Audience must include the configured audience when present. Legacy tokens without `aud` remain accepted so existing sessions survive deployment; audience is not mandatory on incoming tokens. The filter then checks active user/account state and uses the current database role for authorization. Token payloads contain no passwords, password hashes, refresh tokens, keys or OTPs.
+
+Example before:
+```json
+{"sub":"42","role":"USER","type":"access","iat":1758541800,"exp":1758542700,"iss":"signify-be"}
+```
+
+Example after (JJWT serializes audience as an array):
+```json
+{"sub":"42","username":"huybg","roles":["USER"],"role":"USER","type":"access","iat":1758541800,"exp":1758542700,"iss":"signify-be","aud":["signify-client"],"jti":"7f4c8c9a-7e9f-4c3d-9a2b-123456789abc"}
+```
+
+`TokenService.issueTokens` passes database identity, username and role to `JwtService.createAccessToken` for registration, login and refresh. The shared builder reuses the existing clock and registered claim setters. `JwtService` construction and `builder` read issuer from `JwtProperties`; `validateAccessToken` checks audience when present. `JwtProperties` requires nonblank issuer and audience. API responses, principal type, logout and refresh encryption/rotation remain unchanged. Changing issuer intentionally invalidates outstanding access and refresh tokens; use the default issuer to preserve them.
+
+`JwtPayloadTest` covers exact payload fields, actual account username/role, unique UUID IDs, timestamps, signature/issuer/audience/expiry/type validation, legacy tokens, refresh encryption/token separation, and blank configuration. Older tests, if restored, need the username argument in `createAccessToken` and issuer/audience arguments in `JwtProperties`.
 
 The filter creates a `CurrentUser` principal with `ROLE_USER` or `ROLE_ADMIN`. Use `@PreAuthorize("hasRole('ADMIN')")`, or `hasAuthority('ROLE_ADMIN')`; JWT/database role values themselves have no `ROLE_` prefix. Controllers can inject `@AuthenticationPrincipal CurrentUser user` and use `user.userId()` without parsing JWTs again.
 
-The filter performs no database lookup and uses no HTTP session. A supplied invalid bearer token is rejected even on otherwise public routes; omit an expired access token when calling login or refresh.
+The filter looks up the account and user on each bearer request and uses no HTTP session. Banned/deleted users are rejected even with an unexpired access token. A supplied invalid bearer token is rejected even on otherwise public routes; omit an expired access token when calling login or refresh. See [user management APIs](user-management.md) for role checks, profile updates and soft deletion.
 
 ### Refresh tokens and logout
 
@@ -91,7 +107,7 @@ Refresh tokens are encrypted JWTs (JWE), using direct AES-256-GCM (`alg=dir`, `e
 
 Refresh authenticates/decrypts the JWE, validates the claims, and then locks the account row and matching session row. It verifies user/account status, ownership, revocation, and server-side expiration. In the same transaction it revokes the old session and inserts a replacement session with a new token hash. Concurrent refreshes of the same token allow only one success. A failed replacement rolls back the old revocation. Login, refresh, logout, and logout-all use the same account-first lock order.
 
-Logout requires an authenticated identity matching the refresh token owner. Revocation is idempotent for a still-valid refresh JWT. Logout-all revokes every session for the authenticated user. Access JWTs remain valid until their configured expiry; logout, account disabling, and role changes do not immediately invalidate already-issued access JWTs. `/me` and refresh do re-check account/user state.
+Logout requires an authenticated identity matching the refresh token owner. Revocation is idempotent for a still-valid refresh JWT. Logout-all revokes every session for the authenticated user. Logout does not invalidate access JWTs before expiry. Banning/deleting the user blocks subsequent bearer requests, and role changes take effect on the next request through the database identity check.
 
 Replay of a revoked refresh token is rejected. There is no token-family tracking or automatic revocation of all sibling sessions. Clients must serialize refresh requests and replace both stored tokens after a successful refresh.
 
@@ -132,6 +148,8 @@ Migration preconditions stop if duplicate usernames or refresh hashes already ex
 | `JWT_REFRESH_ENCRYPTION_KEY` | Required | Base64 encoding of exactly 32 random bytes; independent AES-256 key, backend only |
 | `JWT_ACCESS_EXPIRATION` | `900000` | Access lifetime in milliseconds (15 minutes) |
 | `JWT_REFRESH_EXPIRATION` | `604800000` | Refresh lifetime in milliseconds (7 days) |
+| `JWT_ISSUER` | `signify-be` | `app.jwt.issuer`; issuer for access and refresh tokens, also required during validation |
+| `JWT_AUDIENCE` | `signify-client` | `app.jwt.audience`; audience emitted on access tokens and checked when present |
 | `RUN_APPLICATION_INTEGRATION_TESTS` | Unset | Set `true` only to opt into the original full application context test with configured services |
 
 Existing property names remain `app.jwt.secret`, `app.jwt.expiration`, and `app.jwt.refresh-expiration`. The previous 24-hour defaults can be retained explicitly with `JWT_ACCESS_EXPIRATION=86400000` and `JWT_REFRESH_EXPIRATION=86400000`. All application instances must share both secrets. Changing `JWT_SECRET` invalidates existing access tokens; changing `JWT_REFRESH_ENCRYPTION_KEY` invalidates existing refresh tokens. Keep the encryption key independent from the signing secret.
@@ -308,7 +326,7 @@ No live AWS/R2/Redis/SMTP services or real credentials were used. No existing ap
 - Revoked refresh sessions are retained for audit; no cleanup scheduler is introduced.
 - No login throttling or account-lockout policy is introduced; those policies remain a separate concern.
 - Storage key ownership and object-level authorization are unchanged. JWT authentication alone does not establish ownership of an image key.
-- JWT secret rotation, token-family replay response, and immediate access-token revocation are outside this stateless MVP.
+- JWT secret rotation, token-family replay response, and per-token access revocation are outside this MVP. User banning is enforced on subsequent bearer requests through database state checks.
 
 ## File inventory
 

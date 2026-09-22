@@ -1,6 +1,7 @@
 package fptu.exe202.signify.signifybe.features.security;
 
 import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
+import fptu.exe202.signify.signifybe.features.auth.application.AccountAccessService;
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import jakarta.servlet.FilterChain;
@@ -20,10 +21,12 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final ApiSecurityErrorHandler errors;
+    private final AccountAccessService accountAccess;
 
-    public JwtAuthenticationFilter(JwtService jwtService, ApiSecurityErrorHandler errors) {
+    public JwtAuthenticationFilter(JwtService jwtService, ApiSecurityErrorHandler errors, AccountAccessService accountAccess) {
         this.jwtService = jwtService;
         this.errors = errors;
+        this.accountAccess = accountAccess;
     }
 
     @Override
@@ -37,6 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         CurrentUser user;
         try {
             user = jwtService.validateAccessToken(authorization.substring(7));
+            user = accountAccess.requireActiveUser(user.userId());
         } catch (AuthException ex) {
             SecurityContextHolder.clearContext();
             errors.commence(request, response, new BadCredentialsException("Invalid bearer token"));
