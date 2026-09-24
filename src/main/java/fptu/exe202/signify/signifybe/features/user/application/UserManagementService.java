@@ -1,5 +1,6 @@
 package fptu.exe202.signify.signifybe.features.user.application;
 
+import fptu.exe202.signify.signifybe.common.UserValidation;
 import fptu.exe202.signify.apiresponse.exception.ConflictException;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.AccountRepository;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSessionRepository;
@@ -29,7 +30,7 @@ public class UserManagementService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public Page<ManagedUser> list(String search, int page, int size) {
-        if (page < 0 || size < 1 || size > 100) throw new IllegalArgumentException("Invalid pagination");
+        if (page < 0 || size < 1 || size > UserValidation.PAGE_MAX_SIZE) throw new IllegalArgumentException("Invalid pagination");
         return users.searchUsers(search == null ? "" : search.strip(), PageRequest.of(page, size, Sort.by("id")))
                 .map(user -> ManagedUser.of(user, accounts.findAccountByUserId(user.getId()).orElseThrow(UserException::notFound)));
     }
@@ -69,11 +70,12 @@ public class UserManagementService {
         if (request.firstName() != null) user.setFirstName(request.firstName().strip());
         if (request.lastName() != null) user.setLastName(request.lastName().strip());
         if (request.firstName() != null || request.lastName() != null) {
-            String fullName = ((user.getFirstName() == null ? "" : user.getFirstName()) + " "
-                    + (user.getLastName() == null ? "" : user.getLastName())).strip();
-            user.setFullName(fullName.isEmpty() ? null : fullName.substring(0, Math.min(200, fullName.length())));
+            user.setFullName(UserValidation.formatFullName(user.getFirstName(), user.getLastName()));
         }
         if (request.avatar() != null) user.setAvatar(request.avatar().isEmpty() ? null : request.avatar());
+        if (request.phone() != null) user.setPhone(request.phone().isEmpty() ? null : request.phone().strip());
+        if (request.gender() != null) user.setGender(request.gender());
+        if (request.address() != null) user.setAddress(request.address().isEmpty() ? null : request.address().strip());
         user.setUpdatedProfile(true);
         user.setUpdatedAt(clock.millis());
         // The locked entity is managed by JPA. Dirty checking issues UPDATE, never INSERT.

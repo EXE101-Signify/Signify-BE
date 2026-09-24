@@ -1,16 +1,13 @@
 package fptu.exe202.signify.signifybe.features.auth.domain;
 
+import fptu.exe202.signify.signifybe.common.AuthValidation;
+
 /** Untrusted display metadata, never used as proof of identity or authorization. */
 public record SessionMetadata(String deviceName, String ipAddress, String userAgent) {
     public SessionMetadata {
-        deviceName = bounded(deviceName, 255);
-        ipAddress = bounded(ipAddress, 100);
-        userAgent = bounded(userAgent, 1024);
+        deviceName = AuthValidation.formatMetadata(deviceName, AuthValidation.DEVICE_NAME_MAX_LENGTH);
+        ipAddress = AuthValidation.formatMetadata(ipAddress, AuthValidation.IP_ADDRESS_MAX_LENGTH);
+        userAgent = AuthValidation.formatMetadata(userAgent, AuthValidation.USER_AGENT_MAX_LENGTH);
     }
 
-    private static String bounded(String value, int max) {
-        if (value == null || value.isBlank()) return null;
-        String clean = value.replaceAll("[\\p{Cntrl}]", "").strip();
-        return clean.substring(0, Math.min(clean.length(), max));
-    }
 }

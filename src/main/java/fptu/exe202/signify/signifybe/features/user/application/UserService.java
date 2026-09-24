@@ -1,5 +1,6 @@
 package fptu.exe202.signify.signifybe.features.user.application;
 
+import fptu.exe202.signify.signifybe.common.UserValidation;
 import fptu.exe202.signify.apiresponse.exception.ConflictException;
 import fptu.exe202.signify.signifybe.features.auth.application.AuthResult;
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
@@ -10,13 +11,11 @@ import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthExceptio
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.AccountRepository;
 import fptu.exe202.signify.signifybe.features.auth.application.TokenService;
 import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
-import fptu.exe202.signify.signifybe.features.user.domain.exception.UserException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Clock;
-import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,7 +42,7 @@ public class UserService {
     public AuthResult register(String username, String password, String email, String firstName,
                                String lastName, MultipartFile avatar, SessionMetadata metadata) {
         //done
-        validatePassword(password);
+        UserValidation.validatePassword(password);
         if (accountRepository.usernameExists(username)) {
             throw new ConflictException("Username already exist.");
         }
@@ -67,29 +66,4 @@ public class UserService {
         return UserProfile.of(user, account);
     }
 
-    private void validatePassword(String password) {
-        if (password == null || password.isBlank()) {
-            throw new ConflictException("Password must not be empty.");
-        }
-
-        if (password.length() < 8) {
-            throw new ConflictException("Password must be at least 8 characters long.");
-        }
-
-        if (!password.matches(".*[a-z].*")) {
-            throw new ConflictException("Password must contain at least one lowercase letter.");
-        }
-
-        if (!password.matches(".*[A-Z].*")) {
-            throw new ConflictException("Password must contain at least one uppercase letter.");
-        }
-
-        if (!password.matches(".*\\d.*")) {
-            throw new ConflictException("Password must contain at least one number.");
-        }
-
-        if (!password.matches(".*[^A-Za-z\\d].*")) {
-            throw new ConflictException("Password must contain at least one special character.");
-        }
-    }
 }

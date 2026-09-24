@@ -1,5 +1,6 @@
 package fptu.exe202.signify.signifybe.features.user.domain;
 
+import fptu.exe202.signify.signifybe.common.UserValidation;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -12,16 +13,21 @@ public class User {
     @SequenceGenerator(name = "auth_users", sequenceName = "auth_users_id_seq", allocationSize = 1)
     @Column(name = "user_id")
     private Long id;
-    @Column(name = "first_name", length = 100)
+    @Column(name = "first_name", length = UserValidation.NAME_MAX_LENGTH)
     private String firstName;
-    @Column(name = "last_name", length = 100)
+    @Column(name = "last_name", length = UserValidation.NAME_MAX_LENGTH)
     private String lastName;
-    @Column(name = "full_name", length = 200)
+    @Column(name = "full_name", length = UserValidation.FULL_NAME_MAX_LENGTH)
     private String fullName;
-    @Column(length = 150)
+    @Column(length = UserValidation.EMAIL_MAX_LENGTH)
     private String email;
     @Column(columnDefinition = "text")
     private String avatar;
+    @Column(length = UserValidation.PHONE_MAX_LENGTH)
+    private String phone;
+    private Boolean gender;
+    @Column(length = UserValidation.ADDRESS_MAX_LENGTH)
+    private String address;
     @Column(name = "email_verified")
     private Boolean emailVerified;
     @Column(name = "is_updated_profile", nullable = false)
@@ -39,8 +45,7 @@ public class User {
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
-        String name = ((firstName == null ? "" : firstName) + " " + (lastName == null ? "" : lastName)).strip();
-        this.fullName = name.isEmpty() ? null : name.substring(0, Math.min(name.length(), 200));
+        this.fullName = UserValidation.formatFullName(firstName, lastName);
         this.emailVerified = false;
         this.createdAt = now;
         this.updatedAt = now;

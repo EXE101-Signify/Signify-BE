@@ -1,5 +1,6 @@
 package fptu.exe202.signify.signifybe.features.auth.application;
 
+import fptu.exe202.signify.signifybe.common.UserValidation;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.AccountRepository;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSessionRepository;
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
@@ -13,7 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 
 @Service
@@ -44,7 +44,7 @@ public class AuthService {
         Account account = accounts.lockAccountByUsername(username).orElse(null);
         String hash = account == null || account.getPasswordHash() == null ? dummyPasswordHash : account.getPasswordHash();
         // Always perform BCrypt even for unknown usernames or OAuth-only accounts.
-        boolean matches = validLoginPassword(password) && passwordEncoder.matches(password, hash);
+        boolean matches = UserValidation.isValidLoginPassword(password) && passwordEncoder.matches(password, hash);
         if (account == null || account.getPasswordHash() == null || !matches) throw AuthException.invalidCredentials();
         User user = requireActiveUser(account);
         return new AuthResult(UserProfile.of(user, account), tokenService.issueTokens(account, metadata));
@@ -89,10 +89,6 @@ public class AuthService {
         User user = users.findUserById(account.getUserId()).orElseThrow(AuthException::accountDisabled);
         if (!account.isActive() || user.isDeleted()) throw AuthException.accountDisabled();
         return user;
-    }
-
-    private boolean validLoginPassword(String password) {
-        return password != null && !password.isBlank() && password.getBytes(StandardCharsets.UTF_8).length <= 72;
     }
 
 }

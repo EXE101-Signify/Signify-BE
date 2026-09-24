@@ -1,5 +1,6 @@
 package fptu.exe202.signify.signifybe.features.auth.application;
 
+import fptu.exe202.signify.signifybe.common.AuthValidation;
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.Role;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
@@ -83,14 +84,14 @@ public class JwtService {
 
     public long validateRefreshToken(String token) {
         try {
-            validateTokenLength(token);
+            AuthValidation.validateTokenLength(token);
             Jwe<Claims> encrypted = refreshParser.parseEncryptedClaims(token);
             if (!"dir".equals(encrypted.getHeader().getAlgorithm())
                     || !"A256GCM".equals(encrypted.getHeader().getEncryptionAlgorithm())) {
                 throw new IllegalArgumentException();
             }
             Claims claims = validateClaims(encrypted.getPayload(), "refresh");
-            if (claims.getId() == null || !claims.getId().matches("[A-Za-z0-9_-]{43}")) {
+            if (claims.getId() == null || !claims.getId().matches(AuthValidation.REFRESH_TOKEN_ID_REGEX)) {
                 throw new IllegalArgumentException();
             }
             return userId(claims);
@@ -114,7 +115,7 @@ public class JwtService {
     }
 
     private Claims parse(String token, String type) {
-        validateTokenLength(token);
+        AuthValidation.validateTokenLength(token);
         Jws<Claims> signed = parser.parseSignedClaims(token);
         if (!"HS256".equals(signed.getHeader().getAlgorithm())) throw new IllegalArgumentException();
         return validateClaims(signed.getPayload(), type);
@@ -127,10 +128,6 @@ public class JwtService {
             throw new IllegalArgumentException();
         }
         return claims;
-    }
-
-    private void validateTokenLength(String token) {
-        if (token == null || token.isBlank() || token.length() > 4096) throw new IllegalArgumentException();
     }
 
     private SecretKey readEncryptionKey(String encodedKey) {

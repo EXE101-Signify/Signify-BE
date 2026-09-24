@@ -47,16 +47,18 @@ public class UserController {
         return noStore(ApiResponse.success(userMapper.toResponse(userService.me(user.userId()))));
     }
 
-    @PatchMapping("/me")
+    @PatchMapping("/profile")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> updateProfile(@AuthenticationPrincipal CurrentUser user,
             @Valid @RequestBody UpdateProfileRequest request) {
         return noStore(ApiResponse.success("Profile updated successfully",
                 userMapper.toResponse(userManagementService.updateOwn(user.userId(), request))));
     }
+
     private SessionMetadata metadata(HttpServletRequest request, String deviceName) {
         return new SessionMetadata(deviceName, request.getRemoteAddr(), request.getHeader("User-Agent"));
     }
+
     private <T> ResponseEntity<ApiResponse<T>> noStore(ApiResponse<T> body) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
     }
