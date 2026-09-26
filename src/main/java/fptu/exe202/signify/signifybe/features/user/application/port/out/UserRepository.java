@@ -14,4 +14,5 @@ public interface UserRepository {
     Optional<User> lockUserById(long userId);
     boolean emailExistsForOtherUser(String email, long userId);
     Page<User> searchUsers(String search, Pageable pageable);
+    Optional<User> findUserByEmail(String email);
 }

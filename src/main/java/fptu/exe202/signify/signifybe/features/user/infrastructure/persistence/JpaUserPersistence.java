@@ -44,4 +44,10 @@ public class JpaUserPersistence implements UserRepository {
     public boolean isEmailExist(String email) {
         return jpaUserRepository.existsByEmail(email);
     }
+
+    @Override
+    public Optional<User> findUserByEmail(String email) {
+        return jpaUserRepository.findByEmail(email);
+    }
 }
+

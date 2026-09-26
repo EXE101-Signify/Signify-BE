@@ -27,4 +27,6 @@ public interface JpaUserRepository extends JpaRepository<User, Long> {
                 or lower(u.fullName) like lower(concat('%', :search, '%'))
             """)
     Page<User> searchUsers(@Param("search") String search, Pageable pageable);
+
+    Optional<User> findByEmail(String email);
 }

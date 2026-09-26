@@ -40,6 +40,10 @@ spring:
           starttls:
             enable: true
 
+  # Thymeleaf is used only for email template rendering, not web views.
+  thymeleaf:
+    check-template-location: false
+
   payos:
     client-id: ${PAYOS_CLIENT_ID}
     api-key: ${PAYOS_API_KEY}

@@ -25,7 +25,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
     private static final String[] PUBLIC_ACCOUNT_ENDPOINTS = {
-            "/api/users/register", "/api/auth/login", "/api/auth/refresh"
+            "/api/users/register", "/api/auth/login", "/api/auth/refresh",
+            "/api/email/otp/send", "/api/email/otp/verify", "/api/email/otp/resend",
+            "/api/email/forgot-password/send", "/api/email/forgot-password/verify"
     };
     private static final String[] SWAGGER_ENDPOINTS = {
             "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"

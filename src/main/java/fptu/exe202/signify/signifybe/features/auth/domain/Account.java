@@ -44,4 +44,9 @@ public class Account {
         this.updatedAt = now;
     }
     public boolean isActive() { return "ACTIVE".equals(status); }
+
+    public void updatePassword(String newPasswordHash, long now) {
+        this.passwordHash = newPasswordHash;
+        this.updatedAt = now;
+    }
 }
