@@ -5,6 +5,7 @@ import fptu.exe202.signify.apiresponse.exception.ConflictException;
 import fptu.exe202.signify.signifybe.features.auth.application.AuthResult;
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
 import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
+import fptu.exe202.signify.signifybe.features.user.api.dto.UserResponse;
 import fptu.exe202.signify.signifybe.features.user.domain.User;
 import fptu.exe202.signify.signifybe.features.user.domain.UserProfile;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
