@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-conversation-participant-unique
+      author: signify
+      changes:
+        - addUniqueConstraint:
+            tableName: conversation_participant
+            columnNames: conversation_id, user_id
+            constraintName: uq_conv_participant_conversation_user

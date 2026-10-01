@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-message-id-sequence
+      author: signify
+      changes:
+        - createSequence:
+            sequenceName: message_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - sql:
+            dbms: postgresql
+            sql: SELECT setval('message_id_seq', GREATEST(COALESCE((SELECT MAX(message_id) FROM message), 0) + 1, 1), false);
+        - addDefaultValue:
+            tableName: message
+            columnName: message_id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: message_id_seq

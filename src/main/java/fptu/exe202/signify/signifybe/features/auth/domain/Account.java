@@ -21,7 +21,6 @@ public class Account {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
-    @Getter
     @Column(nullable = false, length = 20)
     private String status;
     @Column(name = "created_at")

@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-conversation-enhancements
+      author: signify
+      changes:
+        - addColumn:
+            tableName: conversation
+            columns:
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+              - column:
+                  name: creator_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: conversation
+            baseColumnNames: creator_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_conversation_creator
+        - createSequence:
+            sequenceName: conversation_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - createSequence:
+            sequenceName: conversation_participant_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - sql:
+            dbms: postgresql
+            sql: |
+              SELECT setval('conversation_id_seq', GREATEST(COALESCE((SELECT MAX(conversation_id) FROM conversation), 0) + 1, 1), false);
+              SELECT setval('conversation_participant_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM conversation_participant), 0) + 1, 1), false);
+        - addDefaultValue:
+            tableName: conversation
+            columnName: conversation_id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: conversation_id_seq
+        - addDefaultValue:
+            tableName: conversation_participant
+            columnName: id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: conversation_participant_id_seq
