@@ -44,17 +44,21 @@ public class UserService {
     @Transactional
     public AuthResult register(String username, String password, String email, String firstName,
                                String lastName, MultipartFile avatar, SessionMetadata metadata) {
-        //done
+        //validation password
         UserValidation.validatePassword(password);
+        //check xem username da ton tai hay chua
         if (accountRepository.usernameExists(username)) {
             throw new ConflictException("Username already exist.");
         }
+        //check email da ton tai hay chua
         if (userRepository.isEmailExist(email)) {
             throw new ConflictException("Email already exist");
         }
 
         List<String> getAllPasswordHashed = accountRepository.listPassword();
 
+
+        //check xem password trước khi hash đã tồn tại hay chưa
         for (String s : getAllPasswordHashed) {
             if (passwordEncoder.matches(password, s)) {
                 throw new ConflictException("Password already exist");

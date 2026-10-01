@@ -7,6 +7,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface JpaUserSessionRepository extends JpaRepository<UserSession, Long> {
+    boolean existsByIdAndUserIdAndRevokedAtIsNullAndExpiresAtGreaterThan(Long id, Long userId, long now);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from UserSession s where s.refreshTokenHash = :hash")
     Optional<UserSession> lockByHash(@Param("hash") String hash);

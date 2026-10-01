@@ -72,8 +72,13 @@ public class JpaAuthPersistence implements AccountRepository, UserSessionReposit
     }
 
     @Override
-    public void saveSession(UserSession session) {
-        sessions.save(session);
+    public UserSession saveSession(UserSession session) {
+        return sessions.saveAndFlush(session);
+    }
+
+    @Override
+    public boolean isActiveSession(long sessionId, long userId, long now) {
+        return sessions.existsByIdAndUserIdAndRevokedAtIsNullAndExpiresAtGreaterThan(sessionId, userId, now);
     }
 
     @Override

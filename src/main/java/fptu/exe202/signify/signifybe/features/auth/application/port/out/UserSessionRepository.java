@@ -6,6 +6,7 @@ import java.util.Optional;
 public interface UserSessionRepository {
     /** Caller must lock the account first, then the session, in that order. */
     Optional<UserSession> lockSessionByHash(String hash);
-    void saveSession(UserSession session);
+    UserSession saveSession(UserSession session);
+    boolean isActiveSession(long sessionId, long userId, long now);
     void revokeAll(long userId, long now);
 }
