@@ -1,6 +1,5 @@
 package fptu.exe202.signify.signifybe.features.auth.application;
 
-import fptu.exe202.signify.apiresponse.exception.ResourceNotFoundException;
 import fptu.exe202.signify.signifybe.common.UserValidation;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.AccountRepository;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSessionRepository;
@@ -12,16 +11,15 @@ import fptu.exe202.signify.signifybe.features.user.domain.User;
 import fptu.exe202.signify.signifybe.features.user.domain.UserProfile;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthService {
     AccountRepository accountRepository;
@@ -31,7 +29,30 @@ public class AuthService {
     JwtService jwtService;
     TokenService tokenService;
     Clock clock;
-    String dummyPasswordHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
+
+    String dummyPasswordHash;
+
+    public AuthService(
+            AccountRepository accountRepository,
+            UserRepository users,
+            UserSessionRepository sessions,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            TokenService tokenService,
+            Clock clock
+    ) {
+        this.accountRepository = accountRepository;
+        this.users = users;
+        this.sessions = sessions;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.tokenService = tokenService;
+        this.clock = clock;
+
+        this.dummyPasswordHash = passwordEncoder.encode(
+                UUID.randomUUID().toString()
+        );
+    }
 
     @Transactional
     public AuthResult login(String username, String password, SessionMetadata metadata) {

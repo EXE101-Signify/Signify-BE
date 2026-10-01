@@ -8,7 +8,7 @@ public final class StorageKey {
 
     public static String generate(String contentType) {
         String extension = StorageValidation.imageExtension(contentType);
-        return "images/" + UUID.randomUUID() + "." + extension;
+        return UUID.randomUUID() + "." + extension;
     }
 
     public static void validate(String key) {

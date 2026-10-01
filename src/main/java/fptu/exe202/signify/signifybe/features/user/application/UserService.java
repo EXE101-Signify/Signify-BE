@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Clock;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,12 +52,22 @@ public class UserService {
         if (userRepository.isEmailExist(email)) {
             throw new ConflictException("Email already exist");
         }
-        User newUser = new User(email, firstName, lastName, clock.millis());
-        if (avatar != null) {
-            newUser.setAvatar(storageService.uploadImage(avatar).url());
+
+        List<String> getAllPasswordHashed = accountRepository.listPassword();
+
+        for (String s : getAllPasswordHashed) {
+            if (passwordEncoder.matches(password, s)) {
+                throw new ConflictException("Password already exist");
+            }
         }
+
+        User newUser = new User(email, firstName, lastName, clock.millis());
+
         User user = userRepository.addUser(newUser);
         Account account = accountRepository.insertAccount(new Account(user.getId(), username, passwordEncoder.encode(password), clock.millis()));
+        if (avatar != null) {
+            newUser.setAvatar(storageService.uploadAvatar(user.getId(), avatar).url());
+        }
         return new AuthResult(UserProfile.of(user, account), tokenService.issueTokens(account, metadata));
     }
 

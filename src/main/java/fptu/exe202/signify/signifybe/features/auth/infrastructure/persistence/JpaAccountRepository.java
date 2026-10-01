@@ -4,6 +4,8 @@ import fptu.exe202.signify.signifybe.features.auth.domain.Account;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 import java.util.Optional;
 
 public interface JpaAccountRepository extends JpaRepository<Account, Long> {
@@ -16,4 +18,9 @@ public interface JpaAccountRepository extends JpaRepository<Account, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a where a.userId = :userId")
     Optional<Account> lockByUserId(@Param("userId") long userId);
+
+    Boolean existsByPasswordHash(String passwordHash);
+
+    @Query("select passwordHash from Account")
+    List<String> getAllPasswordHash();
 }

@@ -11,9 +11,14 @@ public final class StorageValidation {
     public static final int IMAGE_HEADER_LENGTH = 12;
     private static final Map<String, String> EXTENSIONS = Map.of(
             "image/jpeg", "jpg", "image/png", "png", "image/webp", "webp", "image/gif", "gif");
-    private static final Pattern IMAGE_KEY = Pattern.compile(
-            "images/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(jpg|png|webp|gif)");
+    private static final String UUID_V4 =
+            "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 
+    private static final Pattern IMAGE_KEY = Pattern.compile(
+            "(?:images/|avatars/[1-9][0-9]*/(?:images/)?|chat-attachments/[1-9][0-9]*/(?:images/)?)"
+                    + UUID_V4
+                    + "\\.(jpg|png|webp|gif)"
+    );
 
     private StorageValidation() { }
 
