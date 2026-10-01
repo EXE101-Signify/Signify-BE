@@ -1,6 +1,6 @@
 # Authentication module
 
-Authentication uses Java 17, the existing Spring Security configuration, JJWT 0.12.6, BCrypt, the shared `ApiResponse` library, and the existing `users`, `account`, and `user_sessions` tables. The storage implementation and its current `/api/storage/images` route are preserved.
+Authentication uses Java 17, the existing Spring Security configuration, JJWT 0.12.6, BCrypt, the shared `ApiResponse` library, and the existing `users`, `account`, and `user_sessions` tables. The Storage controller currently exposes `GET /api/storage/images/url` and `DELETE /api/storage/images`.
 
 ## Architecture and dependency flow
 
@@ -28,7 +28,7 @@ Domain objects are also JPA entities; there are no duplicate `AccountEntity`/`Ac
 
 ## API contract
 
-Authentication routes are under `/api/auth`; registration and profiles are under `/api/users`. Requests and responses use JSON.
+Authentication routes are under `/api/auth`; registration and profiles are under `/api/users`. Auth requests use JSON; registration uses multipart with a JSON `request` part and optional `avatar` file.
 
 | Method | Route | Authentication | Result in `data` |
 |---|---|---|---|
@@ -73,15 +73,15 @@ Validation failures return 400 with the existing field error map. Duplicate user
 
 ### Registration and login
 
-Registration accepts required `username` and `password`, with optional `email`, `firstName`, and `lastName`. The username is case-sensitive, preserved as supplied, at most 100 characters, and unique. Email is optional and is not made unique because the existing schema has no such rule. Registration always assigns `USER` and `ACTIVE`, regardless of client-supplied role or user ID. User creation, account creation, and initial session creation run in one transaction.
+Registration accepts required `username` and `password`, with optional `email`, `firstName`, and `lastName`. The username is case-sensitive, preserved as supplied, at most 100 characters, and unique. Email is optional; the current registration service rejects an email already used by another user even though the database has no unique email constraint. Registration always assigns `USER` and `ACTIVE`, regardless of client-supplied role or user ID. User creation, account creation, and initial session creation run in one transaction.
 
-Passwords must be at least eight characters and at most 72 UTF-8 bytes, respecting BCrypt's input limit. Passwords are not trimmed. Login verifies BCrypt, rejects non-active accounts and soft-deleted users, and creates a session. Accounts without a password hash remain compatible with future OAuth login and cannot use password login. Unknown usernames also perform a dummy BCrypt check.
+Registration passwords must be at least eight characters and at most 72 UTF-8 bytes, with uppercase, lowercase, digit and special characters. Passwords are not trimmed. Login verifies BCrypt, rejects non-active accounts and soft-deleted users, and creates a session. Accounts without a password hash remain compatible with future OAuth login and cannot use password login. Unknown usernames also perform a dummy BCrypt check.
 
 ### JWT access tokens
 
-Access JWTs contain `sub=<BIGINT user ID>`, the persisted account's `username`, `roles=[USER|ADMIN]`, `iat`, `exp`, configured `iss` and `aud`, and a new UUID `jti` for every access token. Existing `role=USER|ADMIN` and `type=access` claims are retained for compatibility. The current database has no user UUID; `sub` deliberately remains the actual database Long ID, serialized as a string. No database migration is required.
+Access JWTs contain `sub=<BIGINT user ID>`, `sid=<BIGINT session ID>`, the persisted account's `username`, `roles=[USER|ADMIN]`, `iat`, `exp`, configured `iss` and `aud`, and a new UUID `jti` for every access token. Existing `role=USER|ADMIN` and `type=access` claims are retained. The current database has no user UUID; `sub` deliberately remains the actual database Long ID, serialized as a string.
 
-Only HS256 signed access tokens are accepted by the request filter. Signature, issuer, expiry, issuance time, type, subject, and role are validated using the existing JJWT library. Audience must include the configured audience when present. Legacy tokens without `aud` remain accepted so existing sessions survive deployment; audience is not mandatory on incoming tokens. The filter then checks active user/account state and uses the current database role for authorization. Token payloads contain no passwords, password hashes, refresh tokens, keys or OTPs.
+Only HS256 signed access tokens are accepted by the request filter. Signature, issuer, expiry, issuance time, type, subject, and role are validated using the existing JJWT library. Audience must include the configured audience when present. `sid` is required and must identify an active stored session; older access tokens without `sid` are rejected. The filter then checks active user/account state and uses the current database role for authorization. Token payloads contain no passwords, password hashes, refresh tokens, keys or OTPs.
 
 Example before:
 ```json
@@ -90,16 +90,14 @@ Example before:
 
 Example after (JJWT serializes audience as an array):
 ```json
-{"sub":"42","username":"huybg","roles":["USER"],"role":"USER","type":"access","iat":1758541800,"exp":1758542700,"iss":"signify-be","aud":["signify-client"],"jti":"7f4c8c9a-7e9f-4c3d-9a2b-123456789abc"}
+{"sub":"42","sid":123,"username":"huybg","roles":["USER"],"role":"USER","type":"access","iat":1758541800,"exp":1758542700,"iss":"signify-be","aud":["signify-client"],"jti":"7f4c8c9a-7e9f-4c3d-9a2b-123456789abc"}
 ```
 
-`TokenService.issueTokens` passes database identity, username and role to `JwtService.createAccessToken` for registration, login and refresh. The shared builder reuses the existing clock and registered claim setters. `JwtService` construction and `builder` read issuer from `JwtProperties`; `validateAccessToken` checks audience when present. `JwtProperties` requires nonblank issuer and audience. API responses, principal type, logout and refresh encryption/rotation remain unchanged. Changing issuer intentionally invalidates outstanding access and refresh tokens; use the default issuer to preserve them.
-
-`JwtPayloadTest` covers exact payload fields, actual account username/role, unique UUID IDs, timestamps, signature/issuer/audience/expiry/type validation, legacy tokens, refresh encryption/token separation, and blank configuration. Older tests, if restored, need the username argument in `createAccessToken` and issuer/audience arguments in `JwtProperties`.
+`TokenService.issueTokens` passes database identity, persisted session ID, username and role to `JwtService.createAccessToken` for registration, login and refresh. The shared builder reuses the existing clock and registered claim setters. `JwtService` construction and `builder` read issuer from `JwtProperties`; `validateAccessToken` checks audience when present. `JwtProperties` requires nonblank issuer and audience. Changing issuer intentionally invalidates outstanding access and refresh tokens; use the default issuer to preserve them.
 
 The filter creates a `CurrentUser` principal with `ROLE_USER` or `ROLE_ADMIN`. Use `@PreAuthorize("hasRole('ADMIN')")`, or `hasAuthority('ROLE_ADMIN')`; JWT/database role values themselves have no `ROLE_` prefix. Controllers can inject `@AuthenticationPrincipal CurrentUser user` and use `user.userId()` without parsing JWTs again.
 
-The filter looks up the account and user on each bearer request and uses no HTTP session. Banned/deleted users are rejected even with an unexpired access token. A supplied invalid bearer token is rejected even on otherwise public routes; omit an expired access token when calling login or refresh. See [user management APIs](user-management.md) for role checks, profile updates and soft deletion.
+The filter checks the stored session, account and user on each bearer request and uses no HTTP session. Revoked sessions and banned/deleted users are rejected even with an unexpired access token. A supplied invalid bearer token is rejected even on otherwise public routes; omit an expired access token when calling login or refresh. See [user management APIs](user-management.md) for role checks, profile updates and soft deletion.
 
 ### Refresh tokens and logout
 
@@ -107,7 +105,7 @@ Refresh tokens are encrypted JWTs (JWE), using direct AES-256-GCM (`alg=dir`, `e
 
 Refresh authenticates/decrypts the JWE, validates the claims, and then locks the account row and matching session row. It verifies user/account status, ownership, revocation, and server-side expiration. In the same transaction it revokes the old session and inserts a replacement session with a new token hash. Concurrent refreshes of the same token allow only one success. A failed replacement rolls back the old revocation. Login, refresh, logout, and logout-all use the same account-first lock order.
 
-Logout requires an authenticated identity matching the refresh token owner. Revocation is idempotent for a still-valid refresh JWT. Logout-all revokes every session for the authenticated user. Logout does not invalidate access JWTs before expiry. Banning/deleting the user blocks subsequent bearer requests, and role changes take effect on the next request through the database identity check.
+Logout requires an authenticated identity matching the refresh token owner. Revocation is idempotent for a still-valid refresh JWT. Logout-all revokes every session for the authenticated user. The request filter checks the active session for each bearer request, so logout rejects the matching access token on subsequent requests; logout-all rejects access tokens from all the user's sessions. Banning/deleting the user also blocks subsequent bearer requests, and role changes take effect on the next request through the database identity check.
 
 Replay of a revoked refresh token is rejected. There is no token-family tracking or automatic revocation of all sibling sessions. Clients must serialize refresh requests and replace both stored tokens after a successful refresh.
 
@@ -249,15 +247,14 @@ These are POSIX shell examples; Windows users can run them through Git Bash or u
 ```bash
 BASE=http://localhost:8080
 
-# Register; email and names may be omitted.
+# Register; email and names may be omitted. The request part must be JSON.
 curl -X POST "$BASE/api/users/register" \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"alice","password":"a-long-demo-password","email":"alice@example.com","firstName":"Alice"}'
+  -F 'request={"username":"alice","password":"StrongPass1!","email":"alice@example.com","firstName":"Alice"};type=application/json'
 
 # Login from a device.
 curl -X POST "$BASE/api/auth/login" \
   -H 'Content-Type: application/json' \
-  -d '{"username":"alice","password":"a-long-demo-password","deviceName":"My laptop"}'
+  -d '{"username":"alice","password":"StrongPass1!","deviceName":"My laptop"}'
 
 # Set ACCESS_TOKEN and REFRESH_TOKEN locally from data.tokens.
 # Refresh: do not send an expired access token in the Authorization header.
@@ -268,10 +265,10 @@ curl -X POST "$BASE/api/auth/refresh" \
 # Replace ACCESS_TOKEN and REFRESH_TOKEN with the new data fields before continuing.
 curl "$BASE/api/users/me" -H "Authorization: Bearer $ACCESS_TOKEN"
 
-# Authenticated storage request uses the current, unchanged storage route.
-curl -X POST "$BASE/api/storage/images" \
+# The Storage controller exposes URL lookup and deletion, not a standalone upload route.
+curl -G "$BASE/api/storage/images/url" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -F 'file=@avatar.png;type=image/png'
+  --data-urlencode 'key=avatars/1/550e8400-e29b-41d4-a716-446655440000.png'
 
 curl -X POST "$BASE/api/auth/logout" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \

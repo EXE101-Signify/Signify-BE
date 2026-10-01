@@ -5,6 +5,8 @@ This document covers the REST API endpoints for the Chat module, including conve
 ## Base Path
 `v1` - `/api/v1/conversations`
 
+The controller also accepts `/api/conversations`. Frontend clients can use `/api/v1/conversations` consistently.
+
 ## Authentication
 All endpoints require a valid JWT token passed in the `Authorization` header.
 ```http
@@ -166,7 +168,7 @@ Retrieves the details of a specific conversation.
 ---
 
 ## 4. Get Conversation Participants
-Retrieves the list of active participants for a specific conversation. Currently designed for `PRIVATE` (1-1) conversations (returns max 2 participants). Does not expose sensitive user data.
+Retrieves the list of active participants for a specific conversation. `PRIVATE` conversations have up to 2 active participants; `GROUP` conversations can have more. Does not expose sensitive user data.
 
 **Endpoint:** `GET /api/v1/conversations/{conversationId}/participants`
 
@@ -285,7 +287,9 @@ Only `TEXT` is supported. `content` must not be blank and is limited to 5000 cha
 ### 5. Test: Get Participants
 * **Method:** `GET`
 * **URL:** `{{base_url}}/api/v1/conversations/1/participants`  *(Replace `1` with an actual ID from Test 4)*
-* **Expected Result:** 200 OK, array of max 2 participants, containing `userId`, `fullName`, `avatar`, and `joinedAt`.
+* **Expected Result:** 200 OK, array of active participants containing `userId`, `fullName`, `avatar`, and `joinedAt`.
+
+There is currently no REST endpoint for message history and no WebSocket endpoint in this controller. The conversation list contains only `lastMessage`.
 
 ### 6. Test: Membership Validation (403 Forbidden)
 * Use an account that is *not* part of conversation ID `1`.
