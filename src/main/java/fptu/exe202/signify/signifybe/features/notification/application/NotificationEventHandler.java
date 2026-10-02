@@ -5,7 +5,7 @@ import fptu.exe202.signify.signifybe.features.notification.contract.Subscription
 import fptu.exe202.signify.signifybe.features.notification.contract.SubscriptionExpiringEvent;
 import fptu.exe202.signify.signifybe.features.notification.domain.NotificationType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 public class NotificationEventHandler {
     private final NotificationService notifications;
 
-    @ApplicationModuleListener
+    @EventListener
     public void on(MissedCallEvent event) {
         String caller = event.callerDisplayName() == null || event.callerDisplayName().isBlank()
                 ? "Someone" : event.callerDisplayName().strip();
@@ -22,7 +22,7 @@ public class NotificationEventHandler {
                 "VIDEO_CALL", event.callId(), "missed-call:" + event.callId());
     }
 
-    @ApplicationModuleListener
+    @EventListener
     public void on(SubscriptionExpiringEvent event) {
         notifications.create(event.userId(), NotificationType.SUBSCRIPTION_EXPIRING,
                 "Subscription expiring soon",
@@ -31,7 +31,7 @@ public class NotificationEventHandler {
                 "subscription-expiring:" + event.subscriptionId() + ":" + event.expiresAt() + ":" + event.daysRemaining());
     }
 
-    @ApplicationModuleListener
+    @EventListener
     public void on(SubscriptionExpiredEvent event) {
         notifications.create(event.userId(), NotificationType.SUBSCRIPTION_EXPIRED,
                 "Subscription expired", "Your subscription has expired",
