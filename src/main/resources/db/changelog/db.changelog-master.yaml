@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/v1.2/020-attachment-id-sequence.yaml
   - include:
       file: db/changelog/v1.2/021-attachment-deleted-status.yaml
+  - include:
+      file: db/changelog/v1.2/022-message-history-index.yaml

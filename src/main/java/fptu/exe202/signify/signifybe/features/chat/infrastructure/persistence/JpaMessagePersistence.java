@@ -22,4 +22,9 @@ public class JpaMessagePersistence implements MessageRepository {
     public java.util.Optional<Message> findById(long messageId) {
         return jpaRepository.findById(messageId);
     }
+
+    @Override
+    public java.util.Optional<Message> findByIdForUpdate(long messageId) {
+        return jpaRepository.findByIdForUpdate(messageId);
+    }
 }

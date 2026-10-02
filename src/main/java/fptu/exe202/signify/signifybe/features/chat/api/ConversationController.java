@@ -7,6 +7,8 @@ import fptu.exe202.signify.signifybe.features.chat.api.dto.ConversationResponse;
 import fptu.exe202.signify.signifybe.features.chat.api.dto.CreateConversationRequest;
 import fptu.exe202.signify.signifybe.features.chat.api.dto.ParticipantResponse;
 import fptu.exe202.signify.signifybe.features.chat.api.dto.MessageResponse;
+import fptu.exe202.signify.signifybe.features.chat.api.dto.EditMessageRequest;
+import fptu.exe202.signify.signifybe.features.chat.api.dto.EditedMessageResponse;
 import fptu.exe202.signify.signifybe.features.chat.api.dto.SendMessageRequest;
 import fptu.exe202.signify.signifybe.features.chat.application.ConversationMembershipService;
 import fptu.exe202.signify.signifybe.features.chat.application.ConversationService;
@@ -14,6 +16,8 @@ import fptu.exe202.signify.signifybe.features.chat.application.MessageService;
 import fptu.exe202.signify.signifybe.features.chat.application.AttachmentService;
 import fptu.exe202.signify.signifybe.features.chat.application.AttachmentResponse;
 import fptu.exe202.signify.signifybe.features.chat.application.AttachmentMessageResponse;
+import fptu.exe202.signify.signifybe.features.chat.application.MessageHistoryService;
+import fptu.exe202.signify.signifybe.features.chat.application.MessageHistoryResponse;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +42,10 @@ public class ConversationController {
     ConversationMembershipService membershipService;
 
     MessageService messageService;
+
     AttachmentService attachmentService;
+
+    MessageHistoryService messageHistoryService;
 
     @PostMapping
     public ApiResponse<ConversationResponse> createConversation(
@@ -84,6 +91,14 @@ public class ConversationController {
                 messageService.sendMessage(conversationId, user.userId(), request));
     }
 
+    @GetMapping("/{conversationId}/messages")
+    public ApiResponse<MessageHistoryResponse> getMessages(
+            @AuthenticationPrincipal CurrentUser user, @PathVariable long conversationId,
+            @RequestParam(required = false) Long before,
+            @RequestParam(defaultValue = "30") int limit) {
+        return ApiResponse.success(messageHistoryService.get(conversationId, user.userId(), before, limit));
+    }
+
     @PostMapping(value = "/{conversationId}/messages/attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<AttachmentMessageResponse> sendAttachment(
             @AuthenticationPrincipal CurrentUser user,
@@ -97,21 +112,39 @@ public class ConversationController {
 
     @GetMapping("/attachments/{attachmentId}")
     public ApiResponse<AttachmentResponse> getAttachment(
-            @AuthenticationPrincipal CurrentUser user, @PathVariable long attachmentId
+            @AuthenticationPrincipal CurrentUser user,
+
+            @PathVariable long attachmentId
     ) {
         return ApiResponse.success(attachmentService.get(attachmentId, user.userId()));
     }
 
     @DeleteMapping("/{conversationId}/messages/{messageId}")
-    public ApiResponse<Void> removeMessage(@AuthenticationPrincipal CurrentUser user,
-                                           @PathVariable long conversationId, @PathVariable long messageId) {
+    public ApiResponse<Void> removeMessage(
+            @AuthenticationPrincipal CurrentUser user,
+            @PathVariable long conversationId,
+            @PathVariable long messageId
+    ) {
         messageService.removeMessage(conversationId, messageId, user.userId());
         return ApiResponse.success("Message removed successfully", null);
     }
 
+    @PutMapping("/{conversationId}/messages/{messageId}")
+    public ApiResponse<EditedMessageResponse> editMessage(
+            @AuthenticationPrincipal CurrentUser user,
+            @PathVariable long conversationId,
+            @PathVariable long messageId,
+            @Valid @RequestBody EditMessageRequest request
+    ) {
+        return ApiResponse.success("Message updated successfully",
+                messageService.editMessage(conversationId, messageId, user.userId(), request.content()));
+    }
+
     @DeleteMapping("/attachments/{attachmentId}")
-    public ApiResponse<Void> removeAttachment(@AuthenticationPrincipal CurrentUser user,
-                                              @PathVariable long attachmentId) {
+    public ApiResponse<Void> removeAttachment(
+            @AuthenticationPrincipal CurrentUser user,
+            @PathVariable long attachmentId
+    ) {
         attachmentService.remove(attachmentId, user.userId());
         return ApiResponse.success("Attachment removed successfully", null);
     }

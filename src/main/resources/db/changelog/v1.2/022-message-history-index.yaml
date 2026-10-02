@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-message-history-index
+      author: signify
+      changes:
+        - createIndex:
+            tableName: message
+            indexName: idx_message_conversation_deleted_id
+            columns:
+              - column:
+                  name: conversation_id
+              - column:
+                  name: is_deleted
+              - column:
+                  name: message_id

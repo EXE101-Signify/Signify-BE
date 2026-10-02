@@ -348,13 +348,90 @@ The signed URL expires after `STORAGE_PRESIGNED_URL_DURATION` (default 15 minute
 
 The API supports upload and message creation in one request. Upload first, attach to a message later is not supported: `message_attachment.message_id` is required and the project has no pending attachment state.
 
-## 8. Remove a Message or Attachment
+## 8. Get Message History (1-1)
+
+**Endpoint:** `GET /api/conversations/{conversationId}/messages?limit=30&before={messageId}`
+
+Only active participants of a `PRIVATE` conversation can read its history. `limit` defaults to 30 and must be between 1 and 100. Omit `before` for the newest page; for older messages, pass the previous response's `nextCursor`. Message IDs are the cursor, so new messages arriving during scrolling do not shift older pages.
+
+**Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "message": "Success",
+  "data": {
+    "messages": [
+      {
+        "messageId": 16,
+        "conversationId": 1,
+        "senderId": 1,
+        "content": "Here is the photo",
+        "messageType": "FILE",
+        "createdAt": 1695900200000,
+        "editedAt": null,
+        "attachments": [
+          {
+            "attachmentId": 4,
+            "fileName": "photo.png",
+            "mimeType": "image/png",
+            "fileSize": 123456,
+            "createdAt": 1695900200000
+          }
+        ]
+      }
+    ],
+    "nextCursor": 16,
+    "hasMore": true
+  }
+}
+```
+
+Messages are returned newest first. The response has at most `limit` messages; `hasMore` indicates whether older messages exist. `nextCursor` is the oldest returned message ID when `hasMore` is true, otherwise `null`. Deleted messages and deleted attachments are omitted. Attachment URLs are requested separately through the attachment metadata endpoint.
+
+**Errors:** 400 for invalid `limit` or `before`, 403 for a nonparticipant, 404 for a missing conversation, and 409 for a conversation that is not `PRIVATE`.
+
+## 9. Edit a TEXT Message
+
+**Endpoint:** `PUT /api/v1/conversations/{conversationId}/messages/{messageId}`
+
+Only the original sender, while still an active participant, can edit a message in the specified `PRIVATE` conversation. The message must exist, belong to that conversation, be of type `TEXT`, and not be deleted. Content must be nonblank and at most 5000 characters. Editing sets `edited_at` to Unix epoch milliseconds; `created_at` remains unchanged.
+
+**Request:**
+
+```json
+{"content":"Updated message"}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "message": "Message updated successfully",
+  "data": {
+    "messageId": 16,
+    "conversationId": 1,
+    "senderId": 1,
+    "content": "Updated message",
+    "messageType": "TEXT",
+    "createdAt": 1695900200000,
+    "editedAt": 1695900300000
+  }
+}
+```
+
+Returns 400 for blank or overlong content, 403 for a nonparticipant or non-sender, 404 for a missing, deleted, or wrong-conversation message, and 409 for a non-TEXT message or non-PRIVATE conversation. Edit and delete lock the same message row within a transaction, so whichever operation acquires the lock first is applied first. An edit waiting behind a delete returns 404. This service is the future persistence boundary for `MESSAGE_UPDATED`; no realtime event is sent yet.
+
+## 10. Remove a Message or Attachment
 
 Only the sender, while still an active participant, can remove their message or attachment. Both operations use soft deletion: `message.is_deleted` already exists, and `message_attachment.is_deleted` was added for individual attachment removal. Repeating a removal returns 404. A removed attachment no longer returns metadata or an access URL; removed messages are omitted from the conversation's last-message preview.
 
 ### Remove a message
 
-**Endpoint:** `DELETE /api/conversations/{conversationId}/messages/{messageId}`
+**Endpoint:** `DELETE /api/v1/conversations/{conversationId}/messages/{messageId}`
 
 The message must belong to the specified `PRIVATE` conversation. Removing it also marks its attachments as deleted. After the database commit, the server attempts to delete their storage objects.
 
@@ -369,6 +446,8 @@ This marks only the attachment as deleted. Its message remains, including any ca
 **Response (200 OK):** `{"success":true,"status":200,"message":"Attachment removed successfully","data":null}`
 
 Both endpoints return 403 if the requester is outside the conversation or is not the sender, and 404 if the target is missing or already removed. Message removal returns 409 if the conversation is not `PRIVATE`. An already issued signed URL may remain usable until its expiry if storage deletion fails; the server logs that failure for cleanup.
+
+Message removal locks the row in the same transaction used by editing. It sets `message.is_deleted=true` without deleting the message row. `MESSAGE_DELETED` can be published after persistence when realtime delivery is added; this API does not send it yet.
 
 ---
 
@@ -418,7 +497,7 @@ Both endpoints return 403 if the requester is outside the conversation or is not
 * **URL:** `{{base_url}}/api/conversations/1/participants`  *(Replace `1` with an actual ID from Test 4)*
 * **Expected Result:** 200 OK, array of active participants containing `userId`, `fullName`, `avatar`, and `joinedAt`.
 
-There is currently no REST endpoint for message history and no WebSocket endpoint in this controller. The conversation list contains only `lastMessage`.
+There is currently no WebSocket endpoint in this controller. The conversation list contains only `lastMessage`; use the message history endpoint for older messages.
 
 ### 6. Test: Membership Validation (403 Forbidden)
 * Use an account that is *not* part of conversation ID `1`.
@@ -463,3 +542,15 @@ There is currently no REST endpoint for message history and no WebSocket endpoin
 * **Method:** `DELETE`
 * **URL:** `{{base_url}}/api/conversations/attachments/4` *(replace `4` with an attachment sent by the authenticated user)*
 * **Expected Result:** 200 OK. The attachment URL endpoint now returns 404; the message remains.
+
+### 13. Scroll Older Messages
+* **Method:** `GET`
+* **URL:** `{{base_url}}/api/conversations/1/messages?limit=30` for the first page.
+* **Next page:** `{{base_url}}/api/conversations/1/messages?limit=30&before={{nextCursor}}` using the returned `nextCursor`.
+* **Expected Result:** At most 30 messages, newest first; stop when `hasMore` is `false`.
+
+### 14. Edit TEXT Message
+* **Method:** `PUT`
+* **URL:** `{{base_url}}/api/v1/conversations/1/messages/16`
+* **Body (raw JSON):** `{"content":"Updated message"}`
+* **Expected Result:** 200 OK with the new `content` and `editedAt`.

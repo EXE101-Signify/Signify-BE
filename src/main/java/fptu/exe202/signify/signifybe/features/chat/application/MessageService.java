@@ -1,6 +1,7 @@
 package fptu.exe202.signify.signifybe.features.chat.application;
 
 import fptu.exe202.signify.signifybe.features.chat.api.dto.MessageResponse;
+import fptu.exe202.signify.signifybe.features.chat.api.dto.EditedMessageResponse;
 import fptu.exe202.signify.signifybe.features.chat.api.dto.SendMessageRequest;
 import fptu.exe202.signify.signifybe.features.chat.application.port.out.ConversationParticipantRepository;
 import fptu.exe202.signify.signifybe.features.chat.application.port.out.ConversationRepository;
@@ -89,19 +90,25 @@ public class MessageService {
     }
 
     @Transactional
+    public EditedMessageResponse editMessage(long conversationId, long messageId, long userId, String content) {
+        validateContent(content, "TEXT");
+        Message message = lockOwnedMessage(conversationId, messageId, userId);
+        if (!"TEXT".equalsIgnoreCase(message.getMessageType())) {
+            throw ConversationException.messageNotEditable();
+        }
+        message.setContent(content);
+        message.setEditedAt(clock.millis());
+        Message saved = messageRepository.save(message);
+        // Publication boundary for a future MESSAGE_UPDATED event: persist first.
+        return new EditedMessageResponse(saved.getId(), saved.getConversationId(), saved.getSenderId(),
+                saved.getContent(), saved.getMessageType(), saved.getCreatedAt(), saved.getEditedAt());
+    }
+
+    @Transactional
     public void removeMessage(long conversationId, long messageId, long userId) {
+        Message message = lockOwnedMessage(conversationId, messageId, userId);
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(ConversationException::notFound);
-        if (!participantRepository.isParticipant(conversationId, userId)) {
-            throw ConversationException.accessDenied();
-        }
-        if (!ConversationType.PRIVATE.name().equalsIgnoreCase(conversation.getType())) {
-            throw ConversationException.invalidOneToOneConversation();
-        }
-        Message message = messageRepository.findById(messageId)
-                .filter(m -> m.getConversationId() == conversationId && !m.isDeleted())
-                .orElseThrow(ConversationException::messageNotFound);
-        if (message.getSenderId() != userId) throw ConversationException.notMessageSender();
 
         message.setDeleted(true);
         messageRepository.save(message);
@@ -111,6 +118,23 @@ public class MessageService {
         conversation.setUpdatedAt(clock.millis());
         conversationRepository.save(conversation);
         files.forEach(file -> deleteObjectAfterCommit(file.getFileUrl()));
+        // Publication boundary for a future MESSAGE_DELETED event: persist first.
+    }
+
+    private Message lockOwnedMessage(long conversationId, long messageId, long userId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(ConversationException::notFound);
+        if (!participantRepository.isParticipant(conversationId, userId)) {
+            throw ConversationException.accessDenied();
+        }
+        if (!ConversationType.PRIVATE.name().equalsIgnoreCase(conversation.getType())) {
+            throw ConversationException.invalidOneToOneConversation();
+        }
+        Message message = messageRepository.findByIdForUpdate(messageId)
+                .filter(m -> m.getConversationId() == conversationId && !m.isDeleted())
+                .orElseThrow(ConversationException::messageNotFound);
+        if (message.getSenderId() != userId) throw ConversationException.notMessageSender();
+        return message;
     }
 
     private void deleteObjectAfterCommit(String key) {

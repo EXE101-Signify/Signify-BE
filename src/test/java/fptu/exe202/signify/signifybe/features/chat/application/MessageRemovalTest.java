@@ -43,7 +43,7 @@ class MessageRemovalTest {
         Message message = message();
         MessageAttachment attachment = new MessageAttachment(31, "chat-attachments/7/key.png", "photo.png",
                 "image/png", 12, 1);
-        when(messages.findById(31)).thenReturn(Optional.of(message));
+        when(messages.findByIdForUpdate(31)).thenReturn(Optional.of(message));
         when(attachments.findByMessageIdAndDeletedFalse(31)).thenReturn(List.of(attachment));
 
         service.removeMessage(7, 31, 1);
@@ -64,8 +64,22 @@ class MessageRemovalTest {
     @Test void otherParticipantCannotRemoveSenderMessage() {
         when(conversations.findById(7)).thenReturn(Optional.of(new Conversation("PRIVATE", null, 1L, 1)));
         when(participants.isParticipant(7, 2)).thenReturn(true);
-        when(messages.findById(31)).thenReturn(Optional.of(message()));
+        when(messages.findByIdForUpdate(31)).thenReturn(Optional.of(message()));
         assertThrows(ConversationException.class, () -> service.removeMessage(7, 31, 2));
+        verify(messages, never()).save(any());
+    }
+
+    @Test void deletedOrWrongConversationMessageCannotBeRemoved() {
+        member();
+        Message deleted = message();
+        deleted.setDeleted(true);
+        when(messages.findByIdForUpdate(31)).thenReturn(Optional.of(deleted));
+        assertThrows(ConversationException.class, () -> service.removeMessage(7, 31, 1));
+
+        Message wrongConversation = new Message(8L, 1L, "hello", "TEXT", 1);
+        wrongConversation.setId(31L);
+        when(messages.findByIdForUpdate(31)).thenReturn(Optional.of(wrongConversation));
+        assertThrows(ConversationException.class, () -> service.removeMessage(7, 31, 1));
         verify(messages, never()).save(any());
     }
 
@@ -92,7 +106,7 @@ class MessageRemovalTest {
         member();
         MessageAttachment attachment = new MessageAttachment(31, "chat-attachments/7/key.png", "photo.png",
                 "image/png", 12, 1);
-        when(messages.findById(31)).thenReturn(Optional.of(message()));
+        when(messages.findByIdForUpdate(31)).thenReturn(Optional.of(message()));
         when(attachments.findByMessageIdAndDeletedFalse(31)).thenReturn(List.of(attachment));
         TransactionSynchronizationManager.initSynchronization();
         try {

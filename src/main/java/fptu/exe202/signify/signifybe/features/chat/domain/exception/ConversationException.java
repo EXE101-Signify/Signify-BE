@@ -17,7 +17,10 @@ public final class ConversationException extends BaseException {
         return new ConversationException(HttpStatus.NOT_FOUND, "Message not found");
     }
     public static ConversationException notMessageSender() {
-        return new ConversationException(HttpStatus.FORBIDDEN, "Only the sender can remove this message or attachment");
+        return new ConversationException(HttpStatus.FORBIDDEN, "Only the sender can edit or remove this message or attachment");
+    }
+    public static ConversationException messageNotEditable() {
+        return new ConversationException(HttpStatus.CONFLICT, "Only TEXT messages can be edited");
     }
     public static ConversationException accessDenied() {
         return new ConversationException(HttpStatus.FORBIDDEN, "You are not a participant of this conversation");
