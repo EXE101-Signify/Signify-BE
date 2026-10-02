@@ -10,6 +10,15 @@ public final class ConversationException extends BaseException {
     public static ConversationException notFound() {
         return new ConversationException(HttpStatus.NOT_FOUND, "Conversation not found");
     }
+    public static ConversationException attachmentNotFound() {
+        return new ConversationException(HttpStatus.NOT_FOUND, "Attachment not found");
+    }
+    public static ConversationException messageNotFound() {
+        return new ConversationException(HttpStatus.NOT_FOUND, "Message not found");
+    }
+    public static ConversationException notMessageSender() {
+        return new ConversationException(HttpStatus.FORBIDDEN, "Only the sender can remove this message or attachment");
+    }
     public static ConversationException accessDenied() {
         return new ConversationException(HttpStatus.FORBIDDEN, "You are not a participant of this conversation");
     }

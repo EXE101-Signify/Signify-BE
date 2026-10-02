@@ -19,6 +19,9 @@ public final class StorageValidation {
                     + UUID_V4
                     + "\\.(jpg|png|webp|gif)"
     );
+    private static final Pattern ATTACHMENT_KEY = Pattern.compile(
+            "chat-attachments/[1-9][0-9]*/" + UUID_V4 + "\\.(jpg|png|webp|gif|pdf)"
+    );
 
     private StorageValidation() { }
 
@@ -33,6 +36,37 @@ public final class StorageValidation {
         if (key == null || !IMAGE_KEY.matcher(key).matches()) {
             throw StorageException.invalidRequest("Invalid image storage key");
         }
+    }
+
+    public static void validateAttachmentKey(String key) {
+        if (key == null || !ATTACHMENT_KEY.matcher(key).matches()) {
+            throw StorageException.invalidRequest("Invalid attachment storage key");
+        }
+    }
+
+    public static String attachmentExtension(String mimeType, String filename) {
+        validateFilename(filename);
+        String extension = switch (mimeType == null ? "" : mimeType) {
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            case "image/gif" -> "gif";
+            case "application/pdf" -> "pdf";
+            default -> throw StorageException.invalidRequest("Unsupported attachment MIME type");
+        };
+        String suffix = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(java.util.Locale.ROOT);
+        if (filename.lastIndexOf('.') <= 0
+                || (!suffix.equals(extension) && !(extension.equals("jpg") && suffix.equals("jpeg")))) {
+            throw StorageException.invalidRequest("Attachment extension does not match MIME type");
+        }
+        return extension;
+    }
+
+    public static boolean matchesAttachmentSignature(byte[] header, String mimeType) {
+        if ("application/pdf".equals(mimeType)) {
+            return header != null && header.length >= 5 && ascii(header, 0, 5).equals("%PDF-");
+        }
+        return matchesSignature(header, mimeType);
     }
 
     public static void validateFilename(String filename) {

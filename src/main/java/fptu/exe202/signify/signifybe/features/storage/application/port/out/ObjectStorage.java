@@ -11,5 +11,8 @@ public interface ObjectStorage {
 
     String generateUrl(String key);
 
+    /** Always signs access to a private object, even when public URLs are enabled for avatars. */
+    default String generatePrivateUrl(String key) { return generateUrl(key); }
+
     boolean exists(String key);
 }

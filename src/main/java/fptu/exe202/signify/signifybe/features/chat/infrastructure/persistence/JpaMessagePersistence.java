@@ -17,4 +17,9 @@ public class JpaMessagePersistence implements MessageRepository {
     public Message save(Message message) {
         return jpaRepository.saveAndFlush(message);
     }
+
+    @Override
+    public java.util.Optional<Message> findById(long messageId) {
+        return jpaRepository.findById(messageId);
+    }
 }

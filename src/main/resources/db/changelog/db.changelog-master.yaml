@@ -9,3 +9,7 @@ databaseChangeLog:
       file: db/changelog/v1.2/018-conversation-participant-unique.yaml
   - include:
       file: db/changelog/v1.2/019-message-id-sequence.yaml
+  - include:
+      file: db/changelog/v1.2/020-attachment-id-sequence.yaml
+  - include:
+      file: db/changelog/v1.2/021-attachment-deleted-status.yaml

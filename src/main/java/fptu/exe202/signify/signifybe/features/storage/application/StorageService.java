@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.UUID;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -127,6 +128,48 @@ public class StorageService {
     public void deleteImage(String key) {
         StorageKey.validate(key);
         objectStorage.delete(key);
+    }
+
+    public StorageObject uploadChatAttachment(long conversationId, MultipartFile file) {
+        if (conversationId <= 0 || file == null || file.isEmpty() || file.getSize() <= 0) {
+            throw StorageException.invalidRequest("Attachment must not be empty");
+        }
+        if (file.getSize() > imageProperties.maxSize()) {
+            throw new AttachmentSizeExceededException();
+        }
+        String mimeType = file.getContentType();
+        String extension = StorageValidation.attachmentExtension(mimeType, file.getOriginalFilename());
+        String key = "chat-attachments/" + conversationId + "/" + UUID.randomUUID() + "." + extension;
+        try {
+            byte[] bytes = file.getBytes();
+            if (bytes.length == 0 || bytes.length > imageProperties.maxSize()
+                    || !StorageValidation.matchesAttachmentSignature(bytes, mimeType)) {
+                throw StorageException.invalidRequest("Invalid attachment content or size");
+            }
+            try (var input = new ByteArrayInputStream(bytes)) {
+                try {
+                    return objectStorage.upload(key, input, mimeType, bytes.length);
+                } catch (RuntimeException uploadFailure) {
+                    // A provider may have written the object before its response failed.
+                    try { objectStorage.delete(key); }
+                    catch (RuntimeException cleanupFailure) { uploadFailure.addSuppressed(cleanupFailure); }
+                    throw uploadFailure;
+                }
+            }
+        } catch (IOException ex) {
+            throw new StorageUploadException();
+        }
+    }
+
+    public void deleteAttachment(String key) {
+        StorageValidation.validateAttachmentKey(key);
+        objectStorage.delete(key);
+    }
+
+    public String generateAttachmentUrl(String key) {
+        StorageValidation.validateAttachmentKey(key);
+        if (!objectStorage.exists(key)) throw new StorageObjectNotFoundException();
+        return objectStorage.generatePrivateUrl(key);
     }
 
     public String generateUrl(String key) {
