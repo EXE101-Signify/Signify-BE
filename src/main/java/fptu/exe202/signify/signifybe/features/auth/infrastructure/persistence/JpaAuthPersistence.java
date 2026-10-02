@@ -5,15 +5,21 @@ import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSess
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
 import fptu.exe202.signify.signifybe.features.auth.domain.UserSession;
 import fptu.exe202.signify.signifybe.features.user.domain.exception.UserException;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JpaAuthPersistence implements AccountRepository, UserSessionRepository {
-    private final JpaAccountRepository accounts;
-    private final JpaUserSessionRepository sessions;
+
+    JpaAccountRepository accounts;
+
+    JpaUserSessionRepository sessions;
 
     public JpaAuthPersistence(JpaAccountRepository accounts, JpaUserSessionRepository sessions) {
         this.accounts = accounts;
@@ -51,13 +57,28 @@ public class JpaAuthPersistence implements AccountRepository, UserSessionReposit
     }
 
     @Override
+    public boolean isPasswordExisted(String password) {
+        return accounts.existsByPasswordHash(password);
+    }
+
+    @Override
+    public List<String> listPassword() {
+        return accounts.getAllPasswordHash();
+    }
+
+    @Override
     public Optional<UserSession> lockSessionByHash(String hash) {
         return sessions.lockByHash(hash);
     }
 
     @Override
-    public void saveSession(UserSession session) {
-        sessions.save(session);
+    public UserSession saveSession(UserSession session) {
+        return sessions.saveAndFlush(session);
+    }
+
+    @Override
+    public boolean isActiveSession(long sessionId, long userId, long now) {
+        return sessions.existsByIdAndUserIdAndRevokedAtIsNullAndExpiresAtGreaterThan(sessionId, userId, now);
     }
 
     @Override

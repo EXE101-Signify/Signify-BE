@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-attachment-deleted-status
+      author: signify
+      changes:
+        - addColumn:
+            tableName: message_attachment
+            columns:
+              - column:
+                  name: is_deleted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

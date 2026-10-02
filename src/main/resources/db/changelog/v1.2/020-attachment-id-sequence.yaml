@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-attachment-id-sequence
+      author: signify
+      changes:
+        - createSequence:
+            sequenceName: attachment_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - sql:
+            dbms: postgresql
+            sql: SELECT setval('attachment_id_seq', GREATEST(COALESCE((SELECT MAX(attachment_id) FROM message_attachment), 0) + 1, 1), false);
+        - addDefaultValue:
+            tableName: message_attachment
+            columnName: attachment_id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: attachment_id_seq

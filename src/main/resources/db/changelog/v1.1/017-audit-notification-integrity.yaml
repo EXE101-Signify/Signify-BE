@@ -1,0 +1,136 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-audit-notification-integrity
+      author: signify
+      changes:
+        - createSequence:
+            sequenceName: notification_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - createSequence:
+            sequenceName: admin_audit_log_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - sql:
+            dbms: postgresql
+            sql: |
+              SELECT setval('notification_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM notifications), 0) + 1, 1), false);
+              SELECT setval('admin_audit_log_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM admin_audit_logs), 0) + 1, 1), false);
+        - addDefaultValue:
+            tableName: notifications
+            columnName: id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: notification_id_seq
+        - addDefaultValue:
+            tableName: admin_audit_logs
+            columnName: id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: admin_audit_log_id_seq
+        - addColumn:
+            tableName: notifications
+            columns:
+              - column:
+                  name: deduplication_key
+                  type: VARCHAR(180)
+        - addColumn:
+            tableName: admin_audit_logs
+            columns:
+              - column:
+                  name: metadata
+                  type: TEXT
+        - addColumn:
+            tableName: event_publication
+            columns:
+              - column:
+                  name: last_resubmission_date
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: completion_attempts
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+        - createTable:
+            tableName: event_publication_archive
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: listener_id
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_type
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: serialized_event
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: publication_date
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completion_date
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: last_resubmission_date
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: completion_attempts
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+        - addUniqueConstraint:
+            tableName: notifications
+            columnNames: deduplication_key
+            constraintName: uq_notifications_deduplication_key
+        - createIndex:
+            tableName: notifications
+            indexName: idx_notifications_user_read_created
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: is_read
+              - column:
+                  name: created_at
+        - createIndex:
+            tableName: admin_audit_logs
+            indexName: idx_admin_audit_logs_admin_created
+            columns:
+              - column:
+                  name: admin_id
+              - column:
+                  name: created_at
+        - createIndex:
+            tableName: admin_audit_logs
+            indexName: idx_admin_audit_logs_target
+            columns:
+              - column:
+                  name: target_type
+              - column:
+                  name: target_id
+        - createIndex:
+            tableName: event_publication
+            indexName: idx_event_publication_completion_date
+            columns:
+              - column:
+                  name: completion_date

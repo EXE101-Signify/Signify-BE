@@ -9,6 +9,7 @@ import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSess
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import fptu.exe202.signify.signifybe.features.user.api.dto.UpdateProfileRequest;
+import fptu.exe202.signify.signifybe.features.user.api.dto.UserStatus;
 import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
 import fptu.exe202.signify.signifybe.features.user.domain.*;
 import fptu.exe202.signify.signifybe.features.user.domain.exception.UserException;

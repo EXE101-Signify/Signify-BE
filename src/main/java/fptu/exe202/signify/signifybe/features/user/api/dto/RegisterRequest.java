@@ -8,6 +8,5 @@ public record RegisterRequest(@NotBlank @Size(max = UserValidation.USERNAME_MAX_
                               @NotBlank @Size(min = UserValidation.PASSWORD_MIN_LENGTH, max = UserValidation.PASSWORD_MAX_BYTES) String password,
                               @Email @Size(max = UserValidation.EMAIL_MAX_LENGTH) String email,
                               @Size(max = UserValidation.NAME_MAX_LENGTH) String firstName,
-                              @Size(max = UserValidation.NAME_MAX_LENGTH) String lastName,
-                              MultipartFile avatar) {
+                              @Size(max = UserValidation.NAME_MAX_LENGTH) String lastName) {
 }

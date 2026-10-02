@@ -8,6 +8,7 @@ import fptu.exe202.signify.signifybe.features.user.api.dto.UserResponse;
 import fptu.exe202.signify.signifybe.features.user.application.UserService;
 import fptu.exe202.signify.signifybe.features.user.application.UserManagementService;
 import fptu.exe202.signify.signifybe.features.user.api.dto.UpdateProfileRequest;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import fptu.exe202.signify.signifybe.features.auth.mapper.AuthMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,7 @@ import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
 import fptu.exe202.signify.signifybe.features.user.mapper.UserMapper;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -33,11 +35,17 @@ public class UserController {
     UserMapper userMapper;
     AuthMapper authMapper;
 
-    @PostMapping(value = "/register", consumes = "multipart/form-data")
+    @PostMapping(
+            value = "/register",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<ApiResponse<AuthResponse>> registerWithAvatar(
-            @Valid @ModelAttribute RegisterRequest request, HttpServletRequest http) {
+            @Valid @RequestPart("request") RegisterRequest request,
+            @RequestPart(value = "avatar", required = false) MultipartFile avatar,
+            HttpServletRequest http
+    ) {
         var result = userService.register(request.username(), request.password(), request.email(),
-                request.firstName(), request.lastName(), request.avatar(), metadata(http, null));
+                request.firstName(), request.lastName(), avatar, metadata(http, null));
         return noStore(ApiResponse.success("Account registered successfully", authMapper.toAuthResponse(result)));
     }
 

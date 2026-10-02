@@ -46,13 +46,14 @@ public class JwtService {
                 .clock(() -> Date.from(clock.instant())).build();
     }
 
-    public IssuedToken createAccessToken(long userId, String username, Role role) {
-        if (userId <= 0 || username == null || username.isBlank() || role == null) {
-            throw new IllegalArgumentException("Access tokens require a persisted user, username and role");
+    public IssuedToken createAccessToken(long userId, long sessionId, String username, Role role) {
+        if (userId <= 0 || sessionId <= 0 || username == null || username.isBlank() || role == null) {
+            throw new IllegalArgumentException("Access tokens require a persisted user, session, username and role");
         }
         long now = clock.millis();
         long expiresAt = Math.addExact(now, properties.expiration()) / 1000 * 1000;
         String token = builder(userId, "access", now, expiresAt)
+                .claim("sid", sessionId)
                 .claim("username", username).claim("roles", List.of(role.name()))
                 .audience().add(properties.audience()).and().id(UUID.randomUUID().toString())
                 .claim("role", role.name()).signWith(key, Jwts.SIG.HS256).compact();
@@ -76,7 +77,8 @@ public class JwtService {
             if (claims.containsKey("aud") && !claims.getAudience().contains(properties.audience())) {
                 throw new IllegalArgumentException();
             }
-            return new CurrentUser(userId(claims), Role.valueOf(claims.get("role", String.class)));
+            return new CurrentUser(userId(claims), sessionId(claims),
+                    Role.valueOf(claims.get("role", String.class)));
         } catch (JwtException | IllegalArgumentException | NullPointerException ex) {
             throw AuthException.invalidAccessToken();
         }
@@ -145,6 +147,18 @@ public class JwtService {
         long id = Long.parseLong(claims.getSubject());
         if (id <= 0) throw new IllegalArgumentException();
         return id;
+    }
+
+    private long sessionId(Claims claims) {
+        Object value = claims.get("sid");
+        if (!(value instanceof Number number)) throw new IllegalArgumentException();
+        try {
+            long id = new java.math.BigDecimal(number.toString()).longValueExact();
+            if (id <= 0) throw new IllegalArgumentException();
+            return id;
+        } catch (NumberFormatException | ArithmeticException ex) {
+            throw new IllegalArgumentException();
+        }
     }
 
     public record IssuedToken(String value, long expiresAt) {

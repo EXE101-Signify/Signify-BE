@@ -10,38 +10,53 @@ import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepo
 import fptu.exe202.signify.signifybe.features.user.domain.User;
 import fptu.exe202.signify.signifybe.features.user.domain.UserProfile;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.UUID;
 
 @Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthService {
-    private final AccountRepository accounts;
-    private final UserRepository users;
-    private final UserSessionRepository sessions;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-    private final TokenService tokenService;
-    private final Clock clock;
-    private final String dummyPasswordHash;
+    AccountRepository accountRepository;
+    UserRepository users;
+    UserSessionRepository sessions;
+    PasswordEncoder passwordEncoder;
+    JwtService jwtService;
+    TokenService tokenService;
+    Clock clock;
 
-    public AuthService(AccountRepository accounts, UserRepository users, UserSessionRepository sessions,
-                       PasswordEncoder passwordEncoder, JwtService jwtService, Clock clock, TokenService tokenService) {
-        this.accounts = accounts;
+    String dummyPasswordHash;
+
+    public AuthService(
+            AccountRepository accountRepository,
+            UserRepository users,
+            UserSessionRepository sessions,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            TokenService tokenService,
+            Clock clock
+    ) {
+        this.accountRepository = accountRepository;
         this.users = users;
         this.sessions = sessions;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.clock = clock;
         this.tokenService = tokenService;
-        this.dummyPasswordHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
+        this.clock = clock;
+
+        this.dummyPasswordHash = passwordEncoder.encode(
+                UUID.randomUUID().toString()
+        );
     }
 
     @Transactional
     public AuthResult login(String username, String password, SessionMetadata metadata) {
-        Account account = accounts.lockAccountByUsername(username).orElse(null);
+        Account account = accountRepository.lockAccountByUsername(username).orElse(null);
         String hash = account == null || account.getPasswordHash() == null ? dummyPasswordHash : account.getPasswordHash();
         // Always perform BCrypt even for unknown usernames or OAuth-only accounts.
         boolean matches = UserValidation.isValidLoginPassword(password) && passwordEncoder.matches(password, hash);
@@ -53,7 +68,7 @@ public class AuthService {
     @Transactional
     public TokenPair refresh(String refreshToken, SessionMetadata metadata) {
         long userId = jwtService.validateRefreshToken(refreshToken);
-        Account account = accounts.lockAccount(userId).orElseThrow(AuthException::invalidRefreshToken);
+        Account account = accountRepository.lockAccount(userId).orElseThrow(AuthException::invalidRefreshToken);
         requireActiveUser(account);
         UserSession previous = sessions.lockSessionByHash(jwtService.hashRefreshToken(refreshToken))
                 .orElseThrow(AuthException::invalidRefreshToken);
@@ -71,7 +86,7 @@ public class AuthService {
     public void logout(long authenticatedUserId, String refreshToken) {
         long tokenUserId = jwtService.validateRefreshToken(refreshToken);
         if (tokenUserId != authenticatedUserId) throw AuthException.invalidRefreshToken();
-        accounts.lockAccount(authenticatedUserId).orElseThrow(AuthException::invalidRefreshToken);
+        accountRepository.lockAccount(authenticatedUserId).orElseThrow(AuthException::invalidRefreshToken);
         UserSession session = sessions.lockSessionByHash(jwtService.hashRefreshToken(refreshToken))
                 .orElseThrow(AuthException::invalidRefreshToken);
         if (session.getUserId() != authenticatedUserId) throw AuthException.invalidRefreshToken();
@@ -81,7 +96,7 @@ public class AuthService {
 
     @Transactional
     public void logoutAll(long userId) {
-        accounts.lockAccount(userId).orElseThrow(AuthException::invalidAccessToken);
+        accountRepository.lockAccount(userId).orElseThrow(AuthException::invalidAccessToken);
         sessions.revokeAll(userId, clock.millis());
     }
 

@@ -20,10 +20,14 @@ public class TokenService {
     }
     @Transactional(propagation = Propagation.MANDATORY)
     public TokenPair issueTokens(Account account, SessionMetadata metadata) {
-        var access = jwtService.createAccessToken(account.getUserId(), account.getUsername(), account.getRole());
         var refresh = jwtService.createRefreshToken(account.getUserId());
-        sessions.saveSession(new UserSession(account.getUserId(), jwtService.hashRefreshToken(refresh.value()),
-                metadata, clock.millis(), refresh.expiresAt()));
+        UserSession session = sessions.saveSession(new UserSession(account.getUserId(),
+                jwtService.hashRefreshToken(refresh.value()), metadata, clock.millis(), refresh.expiresAt()));
+        if (session.getId() == null || session.getId() <= 0) {
+            throw new IllegalStateException("Persisted session must have a positive ID before issuing access token");
+        }
+        var access = jwtService.createAccessToken(account.getUserId(), session.getId(),
+                account.getUsername(), account.getRole());
         return new TokenPair(access.value(), refresh.value(), access.expiresAt(), refresh.expiresAt());
     }
 

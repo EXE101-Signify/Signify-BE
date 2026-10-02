@@ -2,6 +2,7 @@ package fptu.exe202.signify.signifybe.features.security;
 
 import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
 import fptu.exe202.signify.signifybe.features.auth.application.AccountAccessService;
+import fptu.exe202.signify.signifybe.features.auth.application.SessionAccessService;
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import jakarta.servlet.FilterChain;
@@ -22,11 +23,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final ApiSecurityErrorHandler errors;
     private final AccountAccessService accountAccess;
+    private final SessionAccessService sessionAccess;
 
-    public JwtAuthenticationFilter(JwtService jwtService, ApiSecurityErrorHandler errors, AccountAccessService accountAccess) {
+    public JwtAuthenticationFilter(JwtService jwtService, ApiSecurityErrorHandler errors,
+                                   AccountAccessService accountAccess, SessionAccessService sessionAccess) {
         this.jwtService = jwtService;
         this.errors = errors;
         this.accountAccess = accountAccess;
+        this.sessionAccess = sessionAccess;
     }
 
     @Override
@@ -40,7 +44,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         CurrentUser user;
         try {
             user = jwtService.validateAccessToken(authorization.substring(7));
-            user = accountAccess.requireActiveUser(user.userId());
+            sessionAccess.requireActiveSession(user.sessionId(), user.userId());
+            user = accountAccess.requireActiveUser(user.userId(), user.sessionId());
         } catch (AuthException ex) {
             SecurityContextHolder.clearContext();
             errors.commence(request, response, new BadCredentialsException("Invalid bearer token"));

@@ -31,7 +31,7 @@ public abstract class S3CompatibleObjectStorage implements ObjectStorage {
 
     @Override
     public StorageObject upload(String key, InputStream inputStream, String contentType, long contentLength) {
-        StorageKey.validate(key);
+        StorageKey.validateObjectKey(key);
         // Resolve signing before writing, so a signing failure cannot leave an orphan upload.
         String url = generateUrl(key);
         try {
@@ -46,7 +46,7 @@ public abstract class S3CompatibleObjectStorage implements ObjectStorage {
 
     @Override
     public void delete(String key) {
-        StorageKey.validate(key);
+        StorageKey.validateObjectKey(key);
         try {
             client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
         } catch (SdkException ex) {
@@ -56,11 +56,17 @@ public abstract class S3CompatibleObjectStorage implements ObjectStorage {
 
     @Override
     public String generateUrl(String key) {
-        StorageKey.validate(key);
+        StorageKey.validateObjectKey(key);
         if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
             // Keys consist solely of URL-safe characters validated above.
             return publicBaseUrl + "/" + key;
         }
+        return generatePrivateUrl(key);
+    }
+
+    @Override
+    public String generatePrivateUrl(String key) {
+        StorageKey.validateObjectKey(key);
         try {
             return presigner.presignGetObject(GetObjectPresignRequest.builder()
                     .signatureDuration(urlDuration)
@@ -73,7 +79,7 @@ public abstract class S3CompatibleObjectStorage implements ObjectStorage {
 
     @Override
     public boolean exists(String key) {
-        StorageKey.validate(key);
+        StorageKey.validateObjectKey(key);
         try {
             client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
             return true;

@@ -15,13 +15,13 @@ public class AccountAccessService {
     private final UserRepository users;
 
     @Transactional(readOnly = true)
-    public CurrentUser requireActiveUser(long userId) {
+    public CurrentUser requireActiveUser(long userId, long sessionId) {
         var account = accounts.findAccountByUserId(userId).orElseThrow(AuthException::invalidAccessToken);
         var user = users.findUserById(userId).orElseThrow(AuthException::invalidAccessToken);
         if (!account.isActive() || user.isDeleted() || account.getRole() == null) {
             throw AuthException.invalidAccessToken();
         }
         // Never authorize using a stale role from a previously issued token.
-        return new CurrentUser(userId, account.getRole());
+        return new CurrentUser(userId, sessionId, account.getRole());
     }
 }

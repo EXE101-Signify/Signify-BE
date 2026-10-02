@@ -23,12 +23,6 @@ public class StorageController {
     StorageService storageService;
     StorageMapper storageMapper;
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<UploadImageResponse> upload(@RequestPart("file") MultipartFile file) {
-        var image = storageService.uploadImage(file);
-        return ApiResponse.success("Image uploaded successfully", storageMapper.toUploadImageResponse(image));
-    }
-
     @DeleteMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<Void> delete(@Valid @RequestBody DeleteImageRequest request) {
         storageService.deleteImage(request.key());

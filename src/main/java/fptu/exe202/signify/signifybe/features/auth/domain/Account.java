@@ -1,9 +1,15 @@
 package fptu.exe202.signify.signifybe.features.auth.domain;
 
+import fptu.exe202.signify.signifybe.features.user.api.dto.UserStatus;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
+@Getter
+@Setter
 @Table(name = "account")
+
 public class Account {
     @Id
     @Column(name = "user_id")
@@ -29,16 +35,11 @@ public class Account {
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = Role.USER;
-        this.status = "ACTIVE";
+        this.status = UserStatus.ACTIVE.getValue();
         this.createdAt = now;
         this.updatedAt = now;
     }
 
-    public Long getUserId() { return userId; }
-    public String getUsername() { return username; }
-    public String getPasswordHash() { return passwordHash; }
-    public Role getRole() { return role; }
-    public String getStatus() { return status; }
     public void ban(long now) {
         if ("BANNED".equals(status)) return;
         this.status = "BANNED";
@@ -49,7 +50,7 @@ public class Account {
         this.status = "ACTIVE";
         this.updatedAt = now;
     }
-    public boolean isActive() { return "ACTIVE".equals(status); }
+    public boolean isActive() { return UserStatus.ACTIVE.getValue().equals(status); }
 
     public void updatePassword(String newPasswordHash, long now) {
         this.passwordHash = newPasswordHash;

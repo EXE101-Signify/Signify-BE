@@ -20,7 +20,7 @@
 
 ## 1. Send OTP (Registration)
 
-Gửi mã OTP 6 số đến email để xác minh trước khi đăng ký tài khoản.
+Gửi mã OTP 6 số đến email. Endpoint verify kiểm tra và tiêu thụ OTP; endpoint đăng ký hiện không yêu cầu OTP và không tự đặt `emailVerified=true` sau bước verify.
 
 **Endpoint**: `POST /api/email/otp/send`
 
@@ -60,7 +60,7 @@ Gửi mã OTP 6 số đến email để xác minh trước khi đăng ký tài k
 
 ## 2. Verify OTP (Registration)
 
-Xác minh mã OTP để hoàn tất verify email trước khi đăng ký.
+Kiểm tra mã OTP và xóa mã sau khi xác minh thành công. Bước này chưa cập nhật `users.email_verified`.
 
 **Endpoint**: `POST /api/email/otp/verify`
 
@@ -219,7 +219,7 @@ Xác minh OTP và đổi mật khẩu mới.
 | HTTP Status | Error Message                        | Khi nào                              |
 |-------------|--------------------------------------|--------------------------------------|
 | `400`       | OTP is invalid or expired            | OTP sai hoặc hết hạn (5 phút)       |
-| `400`       | Password must contain at least 8...  | Mật khẩu không hợp lệ               |
+| `400`/`409` | Password validation error            | Mật khẩu không hợp lệ: DTO trả 400, kiểm tra quy tắc trong service trả 409 |
 | `404`       | No account found with this email     | Email không tồn tại (forgot password)|
 | `409`       | This email is already registered     | Email đã đăng ký (send OTP)          |
 | `500`       | Failed to send email                 | Lỗi SMTP server                     |
@@ -239,7 +239,7 @@ Xác minh OTP và đổi mật khẩu mới.
    ↓
 4. FE gọi POST /api/email/otp/verify  { email, otp }
    ↓
-5. Nếu thành công → FE gọi POST /api/users/register  { ... }
+5. Nếu thành công → FE gọi POST /api/users/register bằng multipart với part `request` là JSON và part `avatar` tùy chọn; bước đăng ký hiện không nhận OTP đã verify.
 ```
 
 ### 🔹 Forgot Password Flow
