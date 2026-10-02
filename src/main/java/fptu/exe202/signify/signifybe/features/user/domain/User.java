@@ -53,4 +53,16 @@ public class User {
 
     public boolean isEmailVerified() { return Boolean.TRUE.equals(emailVerified); }
     public boolean isDeleted() { return deletedAt != null; }
+
+    public void ban(long now) {
+        if (deletedAt != null) return;
+        deletedAt = now;
+        updatedAt = now;
+    }
+
+    public void restore(long now) {
+        if (deletedAt == null) return;
+        deletedAt = null;
+        updatedAt = now;
+    }
 }

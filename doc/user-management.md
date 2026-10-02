@@ -10,6 +10,7 @@ All endpoints below require `Authorization: Bearer <access-token>` and use the e
 | GET | `/api/admin/users/{userId}` | ADMIN | Inspect one user including account status and soft-delete timestamp |
 | PATCH | `/api/admin/users/{userId}` | ADMIN | Update an active user's profile |
 | DELETE | `/api/admin/users/{userId}` | ADMIN | Ban / soft delete; never physically remove rows |
+| PATCH | `/api/admin/users/{userId}/unban` | ADMIN | Unban / restore a soft-deleted user |
 
 Pagination is zero-based, with size 1–100 and default 20. Search is case-insensitive, at most 150 characters. Results are ordered by user ID. List response data has `content`, `page`, `size`, `totalElements`, and `totalPages`.
 
@@ -58,14 +59,16 @@ The service locks the existing account and user in a transaction, then mutates t
 
 Ban sets `users.deleted_at` and `updated_at`, sets `account.status=BANNED`, and revokes all refresh sessions in the same transaction. Repeating DELETE is safe and preserves the original deletion timestamp. Administrators cannot ban themselves (403). User/account rows and related data are retained. The admin list/detail endpoints can still inspect banned users.
 
+Unban clears `users.deleted_at`, updates the user timestamp, and sets `account.status=ACTIVE` in the same transaction. Repeating the unban request for an active user is safe and preserves its timestamps. Revoked refresh sessions are never restored, so the user must log in again to obtain a new refresh session. Because access JWTs are stateless, an access token that has not yet expired becomes usable again after the account is active.
+
 The JWT filter first validates the token cryptographically, then checks user/account existence and active state in the database. Authorization uses the current database role, so an old ADMIN token cannot retain admin rights after a role change. Every subsequent bearer request from a banned user is rejected with 401, including requests using a still-unexpired access JWT. Existing login and refresh checks also reject banned users. Requests already in flight at the moment a ban commits may finish.
 
-Admin routes enforce ADMIN in the security chain and method authorization; own-profile updates also enforce ownership at the service layer. Protected routes require USER or ADMIN. Existing registration/login/refresh, public routes and Swagger stay public as before. No role-assignment or unban endpoint is introduced by this change.
+Admin routes enforce ADMIN in the security chain and method authorization; own-profile updates also enforce ownership at the service layer. Protected routes require USER or ADMIN. Existing registration/login/refresh, public routes and Swagger stay public as before. No role-assignment endpoint is introduced by this change.
 
 Errors: 400 invalid request/pagination; 401 missing/invalid token or inactive bearer identity; 403 insufficient role, self-ban or update of a banned target; 404 missing target; 409 email conflict. Responses do not expose password hashes or tokens and use `Cache-Control: no-store`.
 
 ## Verification
 
-`UserManagementPersistenceTest` uses H2 and the existing Liquibase schema to check repeated updates preserve row counts/IDs, no insertion for missing users, method-level roles/ownership, soft deletion/session revocation, blocked login/refresh/access, idempotent bans, self-ban prevention, admin search/update and email conflicts.
+`UserManagementServiceTest` checks soft deletion, session revocation, self-ban prevention, missing users, and idempotent ban/unban transitions. `AdminUserControllerSecurityTest` exercises the real security chain for anonymous, USER and ADMIN requests to both lifecycle endpoints.
 
-`UserManagementWebTest` exercises the real security chain, JWT validation and database identity lookup with mocked repositories/services: anonymous/USER denial, current role overriding stale JWT roles, admin routing, immutable identity/privilege fields, banned/deleted bearer rejection and input validation. Existing `JwtPayloadTest` remains in the suite.
+`AuthServiceBanLifecycleTest` verifies that banned users cannot log in, restored users can create a new session, and refresh sessions revoked during a ban remain invalid after unban.

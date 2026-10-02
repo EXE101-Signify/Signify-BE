@@ -40,7 +40,13 @@ public class Account {
     public Role getRole() { return role; }
     public String getStatus() { return status; }
     public void ban(long now) {
+        if ("BANNED".equals(status)) return;
         this.status = "BANNED";
+        this.updatedAt = now;
+    }
+    public void activate(long now) {
+        if ("ACTIVE".equals(status)) return;
+        this.status = "ACTIVE";
         this.updatedAt = now;
     }
     public boolean isActive() { return "ACTIVE".equals(status); }

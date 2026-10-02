@@ -16,11 +16,13 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@Validated
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
@@ -43,15 +45,25 @@ public class AdminUserController {
     }
 
     @PatchMapping("/{userId}")
-    public ResponseEntity<ApiResponse<ManagedUser>> update(@PathVariable @Positive long userId,
+    public ResponseEntity<ApiResponse<ManagedUser>> update(@AuthenticationPrincipal CurrentUser actor,
+            @PathVariable @Positive long userId,
+            @RequestParam(required = false) @Size(max = 1000) String reason,
             @Valid @RequestBody UpdateProfileRequest request) {
-        return ok(users.updateByAdmin(userId, request));
+        return ok(users.updateByAdmin(actor.userId(), userId, request, reason));
     }
 
     @DeleteMapping("/{userId}")
     public ResponseEntity<ApiResponse<ManagedUser>> ban(@AuthenticationPrincipal CurrentUser actor,
-            @PathVariable @Positive long userId) {
-        return ok(users.ban(actor.userId(), userId));
+            @PathVariable @Positive long userId,
+            @RequestParam(required = false) @Size(max = 1000) String reason) {
+        return ok(users.ban(actor.userId(), userId, reason));
+    }
+
+    @PatchMapping("/{userId}/unban")
+    public ResponseEntity<ApiResponse<ManagedUser>> unban(@AuthenticationPrincipal CurrentUser actor,
+            @PathVariable @Positive long userId,
+            @RequestParam(required = false) @Size(max = 1000) String reason) {
+        return ok(users.unban(actor.userId(), userId, reason));
     }
 
     private <T> ResponseEntity<ApiResponse<T>> ok(T data) {

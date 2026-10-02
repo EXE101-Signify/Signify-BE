@@ -2,6 +2,8 @@ package fptu.exe202.signify.signifybe.features.user.application;
 
 import fptu.exe202.signify.signifybe.common.UserValidation;
 import fptu.exe202.signify.apiresponse.exception.ConflictException;
+import fptu.exe202.signify.signifybe.features.audit.application.AuditLogService;
+import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditAction;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.AccountRepository;
 import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSessionRepository;
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -25,6 +29,7 @@ public class UserManagementService {
     private final AccountRepository accounts;
     private final UserRepository users;
     private final UserSessionRepository sessions;
+    private final AuditLogService auditLogs;
     private final Clock clock;
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -49,19 +54,29 @@ public class UserManagementService {
         return update(userId, request).profile();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') and principal.userId == #actorId")
     @Transactional
-    public ManagedUser updateByAdmin(long userId, UpdateProfileRequest request) {
-        return update(userId, request);
+    public ManagedUser updateByAdmin(long actorId, long userId, UpdateProfileRequest request, String reason) {
+        Account account = accounts.lockAccount(userId).orElseThrow(UserException::notFound);
+        User user = users.lockUserById(userId).orElseThrow(UserException::notFound);
+        Map<String, Object> before = userSnapshot(user);
+        ManagedUser result = updateLocked(account, user, request);
+        auditLogs.record(actorId, AdminAuditAction.UPDATE_USER, "USER", userId, reason,
+                changeMetadata(before, userSnapshot(user)));
+        return result;
     }
 
     private ManagedUser update(long userId, UpdateProfileRequest request) {
         // Consistent account -> user locking order, also used by login/refresh/ban.
         Account account = accounts.lockAccount(userId).orElseThrow(UserException::notFound);
         User user = users.lockUserById(userId).orElseThrow(UserException::notFound);
+        return updateLocked(account, user, request);
+    }
+
+    private ManagedUser updateLocked(Account account, User user, UpdateProfileRequest request) {
         if (!account.isActive() || user.isDeleted()) throw AuthException.accountDisabled();
         if (request.email() != null && !Objects.equals(request.email(), user.getEmail())) {
-            if (users.emailExistsForOtherUser(request.email(), userId)) {
+            if (users.emailExistsForOtherUser(request.email(), user.getId())) {
                 throw new ConflictException("Email already exists");
             }
             user.setEmail(request.email());
@@ -85,17 +100,61 @@ public class UserManagementService {
 
     @PreAuthorize("hasRole('ADMIN') and principal.userId == #actorId")
     @Transactional
-    public ManagedUser ban(long actorId, long userId) {
+    public ManagedUser ban(long actorId, long userId, String reason) {
         if (actorId == userId) throw UserException.cannotBanSelf();
         Account account = accounts.lockAccount(userId).orElseThrow(UserException::notFound);
         User user = users.lockUserById(userId).orElseThrow(UserException::notFound);
+        Map<String, Object> before = lifecycleSnapshot(account, user);
         long now = clock.millis();
-        if (!user.isDeleted()) {
-            user.setDeletedAt(now);
-            user.setUpdatedAt(now);
-        }
-        if (!"BANNED".equals(account.getStatus())) account.ban(now);
+        user.ban(now);
+        account.ban(now);
         sessions.revokeAll(userId, now);
-        return ManagedUser.of(user, account);
+        ManagedUser result = ManagedUser.of(user, account);
+        auditLogs.record(actorId, AdminAuditAction.BAN_USER, "USER", userId, reason,
+                changeMetadata(before, lifecycleSnapshot(account, user)));
+        return result;
+    }
+
+    @PreAuthorize("hasRole('ADMIN') and principal.userId == #actorId")
+    @Transactional
+    public ManagedUser unban(long actorId, long userId, String reason) {
+        Account account = accounts.lockAccount(userId).orElseThrow(UserException::notFound);
+        User user = users.lockUserById(userId).orElseThrow(UserException::notFound);
+        Map<String, Object> before = lifecycleSnapshot(account, user);
+        long now = clock.millis();
+        account.activate(now);
+        user.restore(now);
+        ManagedUser result = ManagedUser.of(user, account);
+        auditLogs.record(actorId, AdminAuditAction.UNBAN_USER, "USER", userId, reason,
+                changeMetadata(before, lifecycleSnapshot(account, user)));
+        return result;
+    }
+
+    private Map<String, Object> userSnapshot(User user) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("email", user.getEmail());
+        snapshot.put("firstName", user.getFirstName());
+        snapshot.put("lastName", user.getLastName());
+        snapshot.put("fullName", user.getFullName());
+        snapshot.put("avatar", user.getAvatar());
+        snapshot.put("phone", user.getPhone());
+        snapshot.put("gender", user.getGender());
+        snapshot.put("address", user.getAddress());
+        snapshot.put("emailVerified", user.getEmailVerified());
+        return snapshot;
+    }
+
+    private Map<String, Object> lifecycleSnapshot(Account account, User user) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("status", account.getStatus());
+        snapshot.put("deletedAt", user.getDeletedAt());
+        return snapshot;
+    }
+
+    private Map<String, Object> changeMetadata(Map<String, Object> before, Map<String, Object> after) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("before", before);
+        metadata.put("after", after);
+        return metadata;
     }
 }
