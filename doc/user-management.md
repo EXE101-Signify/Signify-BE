@@ -77,3 +77,15 @@ Errors: 400 invalid request/pagination; 401 missing/invalid token or inactive be
 `UserManagementServiceTest` checks soft deletion, session revocation, self-ban prevention, missing users, and idempotent ban/unban transitions. `AdminUserControllerSecurityTest` exercises the real security chain for anonymous, USER and ADMIN requests to both lifecycle endpoints.
 
 `AuthServiceBanLifecycleTest` verifies that banned users cannot log in, restored users can create a new session, and refresh sessions revoked during a ban remain invalid after unban.
+
+## User blocks
+
+Authenticated USER or ADMIN accounts can manage their own block list. The server takes the blocker ID from the JWT principal; the client supplies only the target user ID.
+
+| Method | Endpoint | Result |
+| --- | --- | --- |
+| `POST` | `/api/users/{userId}/block` | Blocks the target. Repeating the request returns the existing block. |
+| `DELETE` | `/api/users/{userId}/block` | Unblocks the target by setting `user_blocks.deleted_at`. Repeating the request succeeds. |
+| `GET` | `/api/users/blocked` | Lists only active blocks created by the authenticated user. |
+
+The list and POST response contain the target's `userId`, `fullName`, `avatar`, and `blockedAt` (Unix epoch milliseconds). Responses use `Cache-Control: no-store`. Blocking yourself returns 400; blocking a missing or deleted target returns 404. A single row per `(blocker_id, blocked_id)` is reused when blocking again, with a database unique constraint to prevent duplicate active blocks.

@@ -13,6 +13,7 @@ import fptu.exe202.signify.signifybe.features.chat.domain.MessageAttachment;
 import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.JpaMessageAttachmentRepository;
 import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
 import fptu.exe202.signify.signifybe.features.storage.domain.StorageObject;
+import fptu.exe202.signify.signifybe.features.user.application.BlockValidationService;
 import fptu.exe202.signify.signifybe.features.chat.domain.exception.ConversationException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class MessageService {
     Clock clock;
     JpaMessageAttachmentRepository attachmentRepository;
     StorageService storageService;
+    BlockValidationService blockValidation;
 
     @Transactional
     public MessageResponse sendMessage(long conversationId, long senderId, SendMessageRequest request) {
@@ -160,10 +162,18 @@ public class MessageService {
             throw ConversationException.accessDenied();
         }
 
+        var activeParticipants = participantRepository.findActiveByConversationId(conversationId);
         if (!ConversationType.PRIVATE.name().equalsIgnoreCase(conversation.getType())
-                || participantRepository.findActiveByConversationId(conversationId).size() != 2) {
+                || activeParticipants.size() != 2) {
             throw ConversationException.invalidOneToOneConversation();
         }
+
+        long otherUserId = activeParticipants.stream()
+                .mapToLong(participant -> participant.getUserId())
+                .filter(id -> id != senderId)
+                .findFirst()
+                .orElseThrow(ConversationException::invalidOneToOneConversation);
+        blockValidation.assertCanInteract(senderId, otherUserId);
 
         return conversation;
     }

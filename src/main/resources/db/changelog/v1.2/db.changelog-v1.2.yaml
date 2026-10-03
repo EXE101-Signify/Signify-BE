@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/v1.2/025-create-admin-audit-log-sequence.yaml
   - include:
       file: db/changelog/v1.2/026-create-notification-sequence.yaml
+  - include:
+      file: db/changelog/v1.2/027-user-block-integrity.yaml

@@ -6,6 +6,7 @@ import fptu.exe202.signify.signifybe.features.chat.domain.exception.Conversation
 import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.JpaMessageAttachmentRepository;
 import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.JpaMessageRepository;
 import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.user.application.BlockValidationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -25,7 +26,7 @@ class MessageRemovalTest {
     private final JpaMessageAttachmentRepository attachments = mock(JpaMessageAttachmentRepository.class);
     private final StorageService storage = mock(StorageService.class);
     private final MessageService service = new MessageService(conversations, participants, messages,
-            Clock.systemUTC(), attachments, storage);
+            Clock.systemUTC(), attachments, storage, mock(BlockValidationService.class));
 
     private Message message() {
         Message message = new Message(7L, 1L, "hello", "TEXT", 1);

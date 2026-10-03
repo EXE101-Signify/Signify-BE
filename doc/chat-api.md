@@ -488,6 +488,14 @@ All three endpoints return the current list and counts. For example:
 
 Errors: 400 for an unsupported reaction, 403 for a user outside the conversation, 404 for a missing or deleted message, a message in another conversation, or a reaction that does not match the user's current reaction on DELETE.
 
+## 12. Blocking in 1-1 Chat
+
+If either participant blocks the other, both directions of new direct messages and attachment uploads are rejected with 403 and the same generic message: `Direct interaction is unavailable`. Creating or reopening a `PRIVATE` conversation between them is also rejected. The error does not identify which participant created the block.
+
+Existing conversations and message history are retained. Active participants can still list the old conversation, read its messages, and access previously shared attachments. Removing a block allows new messages again; it does not recreate or delete a conversation.
+
+The project currently has a `video_calls` table but no implemented call-start service or typing/read event service. When those write paths are added, call `BlockValidationService.assertCanInteract` before starting a direct call or emitting an interactive event. Read-only history access continues to use participant membership without a block check.
+
 ---
 
 ## Postman Testing Guide

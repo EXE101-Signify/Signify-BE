@@ -9,6 +9,7 @@ import fptu.exe202.signify.signifybe.features.chat.domain.Message;
 import fptu.exe202.signify.signifybe.features.chat.domain.exception.ConversationException;
 import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.JpaMessageAttachmentRepository;
 import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.user.application.BlockValidationService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -26,7 +27,8 @@ class MessageEditTest {
     private final MessageRepository messages = mock(MessageRepository.class);
     private final MessageService service = new MessageService(conversations, participants, messages,
             Clock.fixed(Instant.ofEpochMilli(123456L), ZoneOffset.UTC),
-            mock(JpaMessageAttachmentRepository.class), mock(StorageService.class));
+            mock(JpaMessageAttachmentRepository.class), mock(StorageService.class),
+            mock(BlockValidationService.class));
 
     private Message message(String type) {
         Message message = new Message(7L, 1L, "original", type, 100L);

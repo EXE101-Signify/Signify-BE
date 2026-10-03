@@ -9,6 +9,7 @@ import fptu.exe202.signify.signifybe.features.chat.domain.ConversationType;
 import fptu.exe202.signify.signifybe.features.chat.domain.Message;
 import fptu.exe202.signify.signifybe.features.chat.domain.exception.ConversationException;
 import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
+import fptu.exe202.signify.signifybe.features.user.application.BlockValidationService;
 import fptu.exe202.signify.signifybe.features.user.domain.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
@@ -31,6 +32,7 @@ public class ConversationService {
     ConversationParticipantRepository participantRepository;
     ConversationMembershipService membershipService;
     UserRepository userRepository;
+    BlockValidationService blockValidation;
     Clock clock;
     EntityManager entityManager;
 
@@ -65,6 +67,7 @@ public class ConversationService {
 
         List<Long> ids = new ArrayList<>(participantIds);
         long otherUserId = ids.get(0) == creatorId ? ids.get(1) : ids.get(0);
+        blockValidation.assertCanInteract(creatorId, otherUserId);
 
         // Check if PRIVATE conversation already exists between these two users
         Optional<Long> existing = participantRepository.findPrivateConversationBetween(creatorId, otherUserId);

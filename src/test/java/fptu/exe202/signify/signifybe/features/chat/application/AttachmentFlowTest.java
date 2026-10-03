@@ -7,6 +7,7 @@ import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.Jp
 import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.JpaMessageRepository;
 import fptu.exe202.signify.signifybe.features.storage.application.ImageProperties;
 import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.user.application.BlockValidationService;
 import fptu.exe202.signify.signifybe.features.storage.application.port.out.ObjectStorage;
 import fptu.exe202.signify.signifybe.features.storage.domain.StorageException;
 import fptu.exe202.signify.signifybe.features.storage.domain.StorageObject;
@@ -30,7 +31,7 @@ class AttachmentFlowTest {
     private final MessageRepository messages = mock(MessageRepository.class);
     private final JpaMessageAttachmentRepository attachments = mock(JpaMessageAttachmentRepository.class);
     private final MessageService service = new MessageService(conversations, participants, messages,
-            Clock.systemUTC(), attachments, storage);
+            Clock.systemUTC(), attachments, storage, mock(BlockValidationService.class));
 
     private MockMultipartFile png(String mime, String name, byte[] bytes) {
         return new MockMultipartFile("file", name, mime, bytes);

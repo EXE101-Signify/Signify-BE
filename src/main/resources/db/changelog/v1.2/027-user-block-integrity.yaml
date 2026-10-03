@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-user-block-integrity
+      author: signify
+      changes:
+        - createSequence:
+            sequenceName: user_blocks_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - sql:
+            dbms: postgresql
+            sql: SELECT setval('user_blocks_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM user_blocks), 0) + 1, 1), false);
+        - addDefaultValue:
+            tableName: user_blocks
+            columnName: id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: user_blocks_id_seq
+        - addUniqueConstraint:
+            tableName: user_blocks
+            columnNames: blocker_id, blocked_id
+            constraintName: uq_user_blocks_pair
