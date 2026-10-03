@@ -46,6 +46,9 @@ public final class ConversationException extends BaseException {
     public static ConversationException invalidMessage(String detail) {
         return new ConversationException(HttpStatus.BAD_REQUEST, detail);
     }
+    public static ConversationException readCursorConflict() {
+        return new ConversationException(HttpStatus.CONFLICT, "Read cursor cannot move backwards");
+    }
     public static ConversationException invalidOneToOneConversation() {
         return new ConversationException(HttpStatus.CONFLICT, "Messages can only be sent in a PRIVATE conversation with exactly two active participants");
     }

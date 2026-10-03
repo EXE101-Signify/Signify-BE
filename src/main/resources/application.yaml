@@ -50,6 +50,12 @@ spring:
     checksum-key: ${PAYOS_CHECKSUM_KEY}
 
 # JWT
+chat:
+  presence:
+    ttl-ms: ${CHAT_PRESENCE_TTL_MS:90000}
+    sweep-ms: ${CHAT_PRESENCE_SWEEP_MS:15000}
+    reconcile-ms: ${CHAT_PRESENCE_RECONCILE_MS:60000}
+
 app:
   jwt:
     issuer: ${JWT_ISSUER:signify-be}

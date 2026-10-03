@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-user-presence
+      author: signify
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: is_online
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_seen_at
+                  type: BIGINT

@@ -16,6 +16,7 @@ public interface JpaNotificationRepository extends JpaRepository<Notification, L
     Optional<Notification> findByIdAndUserId(long id, long userId);
     long countByUserIdAndReadFalse(long userId);
     boolean existsByDeduplicationKey(String deduplicationKey);
+    Optional<Notification> findByDeduplicationKeyAndUserId(String deduplicationKey, long userId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

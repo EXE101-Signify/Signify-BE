@@ -65,6 +65,21 @@ public class NotificationService {
                 referenceId, deduplicationKey, clock.millis())));
     }
 
+    @Transactional
+    public Optional<Notification> createChatMessage(long recipientId, long messageId) {
+        String key = "direct-message:" + messageId + ":" + recipientId;
+        if (repository.existsByDeduplicationKey(key)) return Optional.empty();
+        return Optional.of(repository.saveAndFlush(new Notification(recipientId,
+                NotificationType.DIRECT_MESSAGE, "New message", "You received a direct message",
+                "MESSAGE", messageId, key, clock.millis())));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Notification> findChatMessage(long recipientId, long messageId) {
+        return repository.findByDeduplicationKeyAndUserId(
+                "direct-message:" + messageId + ":" + recipientId, recipientId);
+    }
+
     private void validatePagination(int page, int size) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("Invalid pagination");

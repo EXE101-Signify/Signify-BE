@@ -38,6 +38,10 @@ public class User {
     private Long updatedAt;
     @Column(name = "deleted_at")
     private Long deletedAt;
+    @Column(name = "is_online", nullable = false)
+    private boolean online;
+    @Column(name = "last_seen_at")
+    private Long lastSeenAt;
 
     protected User() { }
 

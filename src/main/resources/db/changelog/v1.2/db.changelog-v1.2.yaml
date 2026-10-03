@@ -21,3 +21,5 @@ databaseChangeLog:
       file: db/changelog/v1.2/026-create-notification-sequence.yaml
   - include:
       file: db/changelog/v1.2/027-user-block-integrity.yaml
+  - include:
+      file: db/changelog/v1.2/028-user-presence.yaml

@@ -69,6 +69,10 @@ public class ChatStompAuthorization implements ChannelInterceptor {
                 throw new AccessDeniedException("Invalid access token");
             }
             String destination = headers.getDestination();
+            if (command == StompCommand.SUBSCRIBE && "/user/queue/notifications".equals(destination))
+                return message;
+            if (command == StompCommand.SEND && "/app/presence/heartbeat".equals(destination))
+                return message;
             var match = (command == StompCommand.SUBSCRIBE ? SUBSCRIPTION : TYPING)
                     .matcher(destination == null ? "" : destination);
             if (!match.matches()) throw new AccessDeniedException("Chat destination denied");

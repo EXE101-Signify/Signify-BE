@@ -18,4 +18,9 @@ public interface JpaMessageRepository extends JpaRepository<Message, Long> {
     List<Message> findByConversationIdAndDeletedFalseOrderByIdDesc(long conversationId, Pageable pageable);
     List<Message> findByConversationIdAndDeletedFalseAndIdLessThanOrderByIdDesc(
             long conversationId, long before, Pageable pageable);
+
+    @Query("select count(m) from Message m where m.conversationId = :conversationId " +
+            "and m.id > :cursor and m.senderId <> :userId and m.deleted = false")
+    long countUnread(@Param("conversationId") long conversationId, @Param("userId") long userId,
+                     @Param("cursor") long cursor);
 }

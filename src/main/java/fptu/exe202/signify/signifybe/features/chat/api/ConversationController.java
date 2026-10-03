@@ -37,6 +37,10 @@ public class ConversationController {
 
     ReactionService reactions;
 
+    ReadStateService readState;
+
+    PresenceService presence;
+
     @PostMapping
     public ApiResponse<ConversationResponse> createConversation(
             @AuthenticationPrincipal CurrentUser user,
@@ -87,6 +91,24 @@ public class ConversationController {
             @RequestParam(required = false) Long before,
             @RequestParam(defaultValue = "30") int limit) {
         return ApiResponse.success(messageHistoryService.get(conversationId, user.userId(), before, limit));
+    }
+
+    @PostMapping("/{conversationId}/read")
+    public ApiResponse<ReadReceiptEvent> markRead(@AuthenticationPrincipal CurrentUser user,
+            @PathVariable long conversationId, @Valid @RequestBody ReadRequest request) {
+        return ApiResponse.success(readState.markRead(conversationId, user.userId(), request.lastReadMessageId()));
+    }
+
+    @GetMapping("/{conversationId}/unread-count")
+    public ApiResponse<ReadStateService.UnreadCount> unreadCount(@AuthenticationPrincipal CurrentUser user,
+            @PathVariable long conversationId) {
+        return ApiResponse.success(readState.unreadCount(conversationId, user.userId()));
+    }
+
+    @GetMapping("/{conversationId}/presence")
+    public ApiResponse<PresenceService.PeerPresence> peerPresence(@AuthenticationPrincipal CurrentUser user,
+            @PathVariable long conversationId) {
+        return ApiResponse.success(presence.peerPresence(conversationId, user.userId()));
     }
 
     @PostMapping(value = "/{conversationId}/messages/attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

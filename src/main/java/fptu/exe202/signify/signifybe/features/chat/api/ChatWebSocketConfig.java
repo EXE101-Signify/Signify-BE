@@ -14,17 +14,22 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 
 @Configuration
 @EnableWebSocketMessageBroker
-@RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    ChatStompAuthorization authorization;
+
+    final ChatStompAuthorization authorization;
 
     @Value("${app.cors.allowed-origins:http://localhost:3000}")
-    private String allowedOrigins;
+    String allowedOrigins;
+
+    public ChatWebSocketConfig(ChatStompAuthorization authorization) {
+        this.authorization = authorization;
+    }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/chat").setAllowedOrigins(allowedOrigins.split("\\s*,\\s*"));
+        registry.addEndpoint("/ws/chat")
+                .setAllowedOrigins(allowedOrigins.split("\\s*,\\s*"));
     }
 
     @Override

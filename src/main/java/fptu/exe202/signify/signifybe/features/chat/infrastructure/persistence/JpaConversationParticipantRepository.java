@@ -4,6 +4,8 @@ import fptu.exe202.signify.signifybe.features.chat.domain.ConversationParticipan
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,6 +15,12 @@ import java.util.Optional;
 public interface JpaConversationParticipantRepository extends JpaRepository<ConversationParticipant, Long> {
 
     boolean existsByConversationIdAndUserIdAndActiveTrue(long conversationId, long userId);
+    Optional<ConversationParticipant> findByConversationIdAndUserIdAndActiveTrue(long conversationId, long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select cp from ConversationParticipant cp where cp.conversationId = :conversationId and cp.userId = :userId and cp.active = true")
+    Optional<ConversationParticipant> lockActive(@Param("conversationId") long conversationId,
+                                                  @Param("userId") long userId);
 
     List<ConversationParticipant> findByConversationIdAndActiveTrue(long conversationId);
 

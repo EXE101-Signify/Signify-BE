@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import java.util.Optional;
 
 @Repository
@@ -29,4 +30,15 @@ public interface JpaUserRepository extends JpaRepository<User, Long> {
     Page<User> searchUsers(@Param("search") String search, Pageable pageable);
 
     Optional<User> findByEmail(String email);
+
+    @Modifying
+    @Query("update User u set u.online = true where u.id = :userId and u.online = false")
+    int markOnline(@Param("userId") long userId);
+
+    @Modifying
+    @Query("update User u set u.online = false, u.lastSeenAt = :at where u.id = :userId and u.online = true")
+    int markOffline(@Param("userId") long userId, @Param("at") long at);
+
+    @Query("select u.id from User u where u.online = true")
+    java.util.List<Long> findOnlineUserIds();
 }
