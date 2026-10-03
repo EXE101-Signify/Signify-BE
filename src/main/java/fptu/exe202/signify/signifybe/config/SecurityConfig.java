@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, PUBLIC_ACCOUNT_ENDPOINTS).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
+                        // Browser WebSocket clients send their bearer token in STOMP CONNECT.
+                        .requestMatchers(HttpMethod.GET, "/ws/chat").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().hasAnyRole("USER", "ADMIN"))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService, errors, accountAccess, sessionAccess),

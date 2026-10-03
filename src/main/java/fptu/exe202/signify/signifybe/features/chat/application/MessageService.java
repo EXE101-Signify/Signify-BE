@@ -19,6 +19,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -41,6 +42,7 @@ public class MessageService {
     JpaMessageAttachmentRepository attachmentRepository;
     StorageService storageService;
     BlockValidationService blockValidation;
+    ApplicationEventPublisher events;
 
     @Transactional
     public MessageResponse sendMessage(long conversationId, long senderId, SendMessageRequest request) {
@@ -53,6 +55,9 @@ public class MessageService {
         Message saved = messageRepository.save(message);
         conversation.setUpdatedAt(now);
         conversationRepository.save(conversation);
+
+        events.publishEvent(ChatEvent.created(conversationId, saved.getId(), senderId,
+                saved.getContent(), saved.getMessageType(), saved.getCreatedAt(), null));
 
         return new MessageResponse(saved.getId(), saved.getConversationId(), saved.getSenderId(),
                 saved.getContent(), saved.getMessageType(), saved.getCreatedAt());
@@ -82,6 +87,8 @@ public class MessageService {
                     message.getId(), object.key(), file.getOriginalFilename(), object.contentType(), object.size(), now));
             conversation.setUpdatedAt(now);
             conversationRepository.save(conversation);
+            events.publishEvent(ChatEvent.created(conversationId, message.getId(), senderId,
+                    message.getContent(), message.getMessageType(), now, attachment.getId()));
             return new AttachmentMessageResponse(message.getId(), attachment.getId(), conversationId,
                     senderId, message.getContent(), attachment.getFileName(), attachment.getMimeType(),
                     attachment.getFileSize(), now);
@@ -99,9 +106,11 @@ public class MessageService {
             throw ConversationException.messageNotEditable();
         }
         message.setContent(content);
-        message.setEditedAt(clock.millis());
+        message.setEditedAt(Math.max(clock.millis(), message.getEditedAt() == null
+                ? message.getCreatedAt() + 1 : message.getEditedAt() + 1));
         Message saved = messageRepository.save(message);
-        // Publication boundary for a future MESSAGE_UPDATED event: persist first.
+        events.publishEvent(ChatEvent.updated(conversationId, saved.getId(), userId,
+                saved.getContent(), saved.getMessageType(), saved.getCreatedAt(), saved.getEditedAt()));
         return new EditedMessageResponse(saved.getId(), saved.getConversationId(), saved.getSenderId(),
                 saved.getContent(), saved.getMessageType(), saved.getCreatedAt(), saved.getEditedAt());
     }
@@ -120,7 +129,7 @@ public class MessageService {
         conversation.setUpdatedAt(clock.millis());
         conversationRepository.save(conversation);
         files.forEach(file -> deleteObjectAfterCommit(file.getFileUrl()));
-        // Publication boundary for a future MESSAGE_DELETED event: persist first.
+        events.publishEvent(ChatEvent.deleted(conversationId, messageId, userId));
     }
 
     private Message lockOwnedMessage(long conversationId, long messageId, long userId) {

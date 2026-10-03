@@ -70,7 +70,8 @@ class BlockedConversationTest {
         blockedPair();
         StorageService storage = mock(StorageService.class);
         MessageService service = new MessageService(conversations, participants, messages,
-                Clock.systemUTC(), mock(JpaMessageAttachmentRepository.class), storage, blockValidation);
+                Clock.systemUTC(), mock(JpaMessageAttachmentRepository.class), storage, blockValidation,
+                mock(org.springframework.context.ApplicationEventPublisher.class));
 
         assertThrows(BlockException.class, () -> service.sendMessage(7, 1,
                 new SendMessageRequest("hello", "TEXT")));

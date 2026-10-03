@@ -10,10 +10,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.dao.DataAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import fptu.exe202.signify.signifybe.features.user.api.UserBlockController;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = ConversationController.class)
+@RestControllerAdvice(assignableTypes = {ConversationController.class, UserBlockController.class})
 public class ChatMultipartExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(ChatMultipartExceptionHandler.class);
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiResponse<Void>> databaseFailure(HttpServletRequest request, DataAccessException exception) {
+        log.error("Chat database operation failed", exception);
+        return ResponseEntity.internalServerError().body(ApiResponse.error(
+                500, "Chat operation failed", request.getRequestURI()));
+    }
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> tooLarge(HttpServletRequest request) {
         return ResponseEntity.status(413).body(ApiResponse.error(

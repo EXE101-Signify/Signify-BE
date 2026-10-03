@@ -28,7 +28,7 @@ class MessageEditTest {
     private final MessageService service = new MessageService(conversations, participants, messages,
             Clock.fixed(Instant.ofEpochMilli(123456L), ZoneOffset.UTC),
             mock(JpaMessageAttachmentRepository.class), mock(StorageService.class),
-            mock(BlockValidationService.class));
+            mock(BlockValidationService.class), mock(org.springframework.context.ApplicationEventPublisher.class));
 
     private Message message(String type) {
         Message message = new Message(7L, 1L, "original", type, 100L);

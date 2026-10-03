@@ -26,7 +26,8 @@ class MessageRemovalTest {
     private final JpaMessageAttachmentRepository attachments = mock(JpaMessageAttachmentRepository.class);
     private final StorageService storage = mock(StorageService.class);
     private final MessageService service = new MessageService(conversations, participants, messages,
-            Clock.systemUTC(), attachments, storage, mock(BlockValidationService.class));
+            Clock.systemUTC(), attachments, storage, mock(BlockValidationService.class),
+            mock(org.springframework.context.ApplicationEventPublisher.class));
 
     private Message message() {
         Message message = new Message(7L, 1L, "hello", "TEXT", 1);

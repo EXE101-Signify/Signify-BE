@@ -394,7 +394,7 @@ Messages are returned newest first. The response has at most `limit` messages; `
 
 ## 9. Edit a TEXT Message
 
-**Endpoint:** `PUT /api/v1/conversations/{conversationId}/messages/{messageId}`
+**Endpoint:** `PUT /api/conversations/{conversationId}/messages/{messageId}`
 
 Only the original sender, while still an active participant, can edit a message in the specified `PRIVATE` conversation. The message must exist, belong to that conversation, be of type `TEXT`, and not be deleted. Content must be nonblank and at most 5000 characters. Editing sets `edited_at` to Unix epoch milliseconds; `created_at` remains unchanged.
 
@@ -423,7 +423,7 @@ Only the original sender, while still an active participant, can edit a message 
 }
 ```
 
-Returns 400 for blank or overlong content, 403 for a nonparticipant or non-sender, 404 for a missing, deleted, or wrong-conversation message, and 409 for a non-TEXT message or non-PRIVATE conversation. Edit and delete lock the same message row within a transaction, so whichever operation acquires the lock first is applied first. An edit waiting behind a delete returns 404. This service is the future persistence boundary for `MESSAGE_UPDATED`; no realtime event is sent yet.
+Returns 400 for blank or overlong content, 403 for a nonparticipant or non-sender, 404 for a missing, deleted, or wrong-conversation message, and 409 for a non-TEXT message or non-PRIVATE conversation. Edit and delete lock the same message row within a transaction, so whichever operation acquires the lock first is applied first. An edit waiting behind a delete returns 404. After commit, the server emits `MESSAGE_UPDATED` through WebSocket.
 
 ## 10. Remove a Message or Attachment
 
@@ -431,7 +431,7 @@ Only the sender, while still an active participant, can remove their message or 
 
 ### Remove a message
 
-**Endpoint:** `DELETE /api/v1/conversations/{conversationId}/messages/{messageId}`
+**Endpoint:** `DELETE /api/conversations/{conversationId}/messages/{messageId}`
 
 The message must belong to the specified `PRIVATE` conversation. Removing it also marks its attachments as deleted. After the database commit, the server attempts to delete their storage objects.
 
@@ -447,7 +447,7 @@ This marks only the attachment as deleted. Its message remains, including any ca
 
 Both endpoints return 403 if the requester is outside the conversation or is not the sender, and 404 if the target is missing or already removed. Message removal returns 409 if the conversation is not `PRIVATE`. An already issued signed URL may remain usable until its expiry if storage deletion fails; the server logs that failure for cleanup.
 
-Message removal locks the row in the same transaction used by editing. It sets `message.is_deleted=true` without deleting the message row. `MESSAGE_DELETED` can be published after persistence when realtime delivery is added; this API does not send it yet.
+Message removal locks the row in the same transaction used by editing. It sets `message.is_deleted=true` without deleting the message row. After commit, the server emits `MESSAGE_DELETED` through WebSocket.
 
 ## 11. Message Reactions
 
@@ -494,7 +494,19 @@ If either participant blocks the other, both directions of new direct messages a
 
 Existing conversations and message history are retained. Active participants can still list the old conversation, read its messages, and access previously shared attachments. Removing a block allows new messages again; it does not recreate or delete a conversation.
 
-The project currently has a `video_calls` table but no implemented call-start service or typing/read event service. When those write paths are added, call `BlockValidationService.assertCanInteract` before starting a direct call or emitting an interactive event. Read-only history access continues to use participant membership without a block check.
+The project currently has a `video_calls` table but no implemented call-start or read-event service. Typing events apply `BlockValidationService.assertCanInteract`. Read-only history access continues to use participant membership without a block check.
+
+## 13. WebSocket Realtime (PRIVATE chat)
+
+Connect to `ws://<host>/ws/chat` using STOMP. The HTTP upgrade endpoint is public so browser clients can connect; the STOMP `CONNECT` frame **must** include `Authorization: Bearer <access-token>`. The server validates the JWT, active session and active account. Only PRIVATE conversations with exactly two active participants are supported by these destinations.
+
+Subscribe to `/user/queue/conversations/{conversationId}`. The server checks active membership on each `SUBSCRIBE`. Clients cannot publish to this queue or subscribe directly to a broker destination. Existing subscriptions receive message events only while the user remains an active participant, because each dispatch selects recipients from current membership. Old history remains available by REST after a block.
+
+REST send, attachment upload, edit and delete emit `MESSAGE_CREATED`, `MESSAGE_UPDATED` and `MESSAGE_DELETED` after the database transaction commits. The event goes to both active participants; broker failure is logged and does not roll back the REST operation. Clients can use `eventId` to deduplicate deliveries. Event fields are `eventId`, `type`, `conversationId`, `messageId`, `senderId`, `content`, `messageType`, `createdAt`, `editedAt` and `attachmentId`; unused fields are `null`. Events contain no attachment URL. Obtain a fresh signed URL through the authenticated attachment REST API.
+
+Send a STOMP `SEND` frame to `/app/conversations/{conversationId}/typing` with JSON `{"type":"TYPING_START"}` or `{"type":"TYPING_STOP"}`. The server derives `senderId` from the authenticated principal, checks membership and block policy, and sends the event only to the other participant. Typing is not stored in PostgreSQL. Repeated events of the same type from one user in one conversation are limited to one every 500 ms per server instance. Other `SEND` destinations are rejected; a supplied `senderId` is ignored.
+
+Chat JSON POST/PUT bodies are capped at 16 KiB; WebSocket messages are capped at 8 KiB. Message content remains limited to 5,000 characters, and multipart uploads use the storage size limit documented above. The simple broker is for one application instance; multi-instance fanout requires a broker relay later. Redis presence is not part of this API.
 
 ---
 
@@ -544,7 +556,7 @@ The project currently has a `video_calls` table but no implemented call-start se
 * **URL:** `{{base_url}}/api/conversations/1/participants`  *(Replace `1` with an actual ID from Test 4)*
 * **Expected Result:** 200 OK, array of active participants containing `userId`, `fullName`, `avatar`, and `joinedAt`.
 
-There is currently no WebSocket endpoint in this controller. The conversation list contains only `lastMessage`; use the message history endpoint for older messages.
+The conversation list contains only `lastMessage`; use the paginated message history endpoint for older messages. The WebSocket endpoint and destinations are documented in section 13.
 
 ### 6. Test: Membership Validation (403 Forbidden)
 * Use an account that is *not* part of conversation ID `1`.
@@ -598,7 +610,7 @@ There is currently no WebSocket endpoint in this controller. The conversation li
 
 ### 14. Edit TEXT Message
 * **Method:** `PUT`
-* **URL:** `{{base_url}}/api/v1/conversations/1/messages/16`
+* **URL:** `{{base_url}}/api/conversations/1/messages/16`
 * **Body (raw JSON):** `{"content":"Updated message"}`
 * **Expected Result:** 200 OK with the new `content` and `editedAt`.
 

@@ -31,7 +31,8 @@ class AttachmentFlowTest {
     private final MessageRepository messages = mock(MessageRepository.class);
     private final JpaMessageAttachmentRepository attachments = mock(JpaMessageAttachmentRepository.class);
     private final MessageService service = new MessageService(conversations, participants, messages,
-            Clock.systemUTC(), attachments, storage, mock(BlockValidationService.class));
+            Clock.systemUTC(), attachments, storage, mock(BlockValidationService.class),
+            mock(org.springframework.context.ApplicationEventPublisher.class));
 
     private MockMultipartFile png(String mime, String name, byte[] bytes) {
         return new MockMultipartFile("file", name, mime, bytes);
