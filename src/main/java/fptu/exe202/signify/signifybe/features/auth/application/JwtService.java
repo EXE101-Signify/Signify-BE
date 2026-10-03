@@ -6,6 +6,8 @@ import fptu.exe202.signify.signifybe.features.auth.domain.Role;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -22,14 +24,22 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JwtService {
-    private final SecretKey key;
-    private final SecretKey refreshEncryptionKey;
-    private final JwtParser refreshParser;
-    private final JwtProperties properties;
-    private final Clock clock;
-    private final JwtParser parser;
-    private final SecureRandom random = new SecureRandom();
+
+    SecretKey key;
+
+    SecretKey refreshEncryptionKey;
+
+    JwtParser refreshParser;
+
+    JwtProperties properties;
+
+    Clock clock;
+
+    JwtParser parser;
+
+    SecureRandom random = new SecureRandom();
 
     public JwtService(JwtProperties properties, Clock clock) {
         this.properties = properties;

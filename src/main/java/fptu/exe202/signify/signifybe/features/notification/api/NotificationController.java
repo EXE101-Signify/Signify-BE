@@ -8,7 +8,9 @@ import fptu.exe202.signify.signifybe.features.notification.domain.NotificationTy
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +24,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class NotificationController {
-    private final NotificationService notifications;
+    NotificationService notifications;
 
     @GetMapping
     public ResponseEntity<ApiResponse<NotificationPage>> list(

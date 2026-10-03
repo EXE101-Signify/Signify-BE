@@ -4,6 +4,8 @@ import fptu.exe202.signify.apiresponse.exception.ForbiddenException;
 import fptu.exe202.signify.apiresponse.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -15,11 +17,12 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 import java.io.IOException;
 
 @Component
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ApiSecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
-    private static final String AUTHENTICATION_REQUIRED =
+    static String AUTHENTICATION_REQUIRED =
             "Authentication required or invalid bearer token";
 
-    private final HandlerExceptionResolver exceptionResolver;
+    HandlerExceptionResolver exceptionResolver;
 
     public ApiSecurityErrorHandler(
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {

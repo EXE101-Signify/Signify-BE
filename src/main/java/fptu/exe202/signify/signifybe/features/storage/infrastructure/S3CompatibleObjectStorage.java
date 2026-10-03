@@ -2,6 +2,8 @@ package fptu.exe202.signify.signifybe.features.storage.infrastructure;
 
 import fptu.exe202.signify.signifybe.features.storage.application.port.out.ObjectStorage;
 import fptu.exe202.signify.signifybe.features.storage.domain.*;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -13,12 +15,18 @@ import java.io.InputStream;
 import java.time.Duration;
 
 /** Shared S3 protocol operations; provider configuration remains in the concrete adapters. */
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public abstract class S3CompatibleObjectStorage implements ObjectStorage {
-    private final S3Client client;
-    private final S3Presigner presigner;
-    private final String bucket;
-    private final String publicBaseUrl;
-    private final Duration urlDuration;
+
+    S3Client client;
+
+    S3Presigner presigner;
+
+    String bucket;
+
+    String publicBaseUrl;
+
+    Duration urlDuration;
 
     protected S3CompatibleObjectStorage(S3Client client, S3Presigner presigner,
                                         String bucket, StorageProperties properties) {

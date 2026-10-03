@@ -2,7 +2,9 @@ package fptu.exe202.signify.signifybe.features.chat.application;
 
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.chat.api.TypingRequest;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -13,12 +15,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TypingService {
-    private static final long MIN_INTERVAL_MS = 500;
-    private final PrivateChatAccessService access;
-    private final SimpMessagingTemplate messaging;
-    private final Clock clock;
-    private final ConcurrentHashMap<String, Long> lastSent = new ConcurrentHashMap<>();
+    static long MIN_INTERVAL_MS = 500;
+
+    PrivateChatAccessService access;
+
+    SimpMessagingTemplate messaging;
+
+    Clock clock;
+
+    ConcurrentHashMap<String, Long> lastSent = new ConcurrentHashMap<>();
 
     public void send(long conversationId, CurrentUser sender, TypingRequest request) {
         if (sender == null) throw new AccessDeniedException("Authentication required");

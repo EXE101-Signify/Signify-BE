@@ -5,7 +5,9 @@ import fptu.exe202.signify.signifybe.features.auth.application.AccountAccessServ
 import fptu.exe202.signify.signifybe.features.auth.application.SessionAccessService;
 import fptu.exe202.signify.signifybe.features.security.ApiSecurityErrorHandler;
 import fptu.exe202.signify.signifybe.features.security.JwtAuthenticationFilter;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,13 +26,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SecurityConfig {
-    private static final String[] PUBLIC_ACCOUNT_ENDPOINTS = {
+    static String[] PUBLIC_ACCOUNT_ENDPOINTS = {
             "/api/users/register", "/api/auth/login", "/api/auth/refresh",
             "/api/email/otp/send", "/api/email/otp/verify", "/api/email/otp/resend",
             "/api/email/forgot-password/send", "/api/email/forgot-password/verify"
     };
-    private static final String[] SWAGGER_ENDPOINTS = {
+    static String[] SWAGGER_ENDPOINTS = {
             "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"
     };
 

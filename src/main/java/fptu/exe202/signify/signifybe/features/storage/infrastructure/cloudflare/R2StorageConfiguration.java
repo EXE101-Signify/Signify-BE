@@ -1,6 +1,8 @@
 package fptu.exe202.signify.signifybe.features.storage.infrastructure.cloudflare;
 
 import fptu.exe202.signify.signifybe.features.storage.infrastructure.StorageProperties;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,13 +22,19 @@ import java.net.URI;
         name = "provider",
         havingValue = "r2"
 )
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class R2StorageConfiguration {
 
-    private final StorageProperties properties;
-    private final URI endpoint;
-    private final Region region;
-    private final StaticCredentialsProvider credentials;
-    private final S3Configuration serviceConfiguration;
+
+    StorageProperties properties;
+
+    URI endpoint;
+
+    Region region;
+
+    StaticCredentialsProvider credentials;
+
+    S3Configuration serviceConfiguration;
 
     public R2StorageConfiguration(
             StorageProperties properties,

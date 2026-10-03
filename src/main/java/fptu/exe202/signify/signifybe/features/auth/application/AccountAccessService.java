@@ -4,15 +4,20 @@ import fptu.exe202.signify.signifybe.features.auth.application.port.out.AccountR
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AccountAccessService {
-    private final AccountRepository accounts;
-    private final UserRepository users;
+
+    AccountRepository accounts;
+
+    UserRepository users;
 
     @Transactional(readOnly = true)
     public CurrentUser requireActiveUser(long userId, long sessionId) {

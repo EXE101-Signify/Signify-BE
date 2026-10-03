@@ -3,16 +3,22 @@ import fptu.exe202.signify.signifybe.features.auth.application.port.out.UserSess
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
 import fptu.exe202.signify.signifybe.features.auth.domain.SessionMetadata;
 import fptu.exe202.signify.signifybe.features.auth.domain.UserSession;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 
 @Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TokenService {
-    private final UserSessionRepository sessions;
-    private final JwtService jwtService;
-    private final Clock clock;
+
+    UserSessionRepository sessions;
+
+    JwtService jwtService;
+
+    Clock clock;
     public TokenService(UserSessionRepository sessions, JwtService jwtService, Clock clock) {
         this.sessions = sessions;
         this.jwtService = jwtService;

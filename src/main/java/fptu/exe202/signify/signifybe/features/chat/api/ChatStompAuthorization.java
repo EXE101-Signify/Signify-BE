@@ -6,7 +6,9 @@ import fptu.exe202.signify.signifybe.features.auth.application.SessionAccessServ
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -21,13 +23,19 @@ import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatStompAuthorization implements ChannelInterceptor {
-    private static final Pattern SUBSCRIPTION = Pattern.compile("/user/queue/conversations/([1-9][0-9]*)");
-    private static final Pattern TYPING = Pattern.compile("/app/conversations/([1-9][0-9]*)/typing");
-    private final JwtService jwt;
-    private final SessionAccessService sessions;
-    private final AccountAccessService accounts;
-    private final PrivateChatAccessService access;
+    static Pattern SUBSCRIPTION = Pattern.compile("/user/queue/conversations/([1-9][0-9]*)");
+
+    static Pattern TYPING = Pattern.compile("/app/conversations/([1-9][0-9]*)/typing");
+
+    JwtService jwt;
+
+    SessionAccessService sessions;
+
+    AccountAccessService accounts;
+
+    PrivateChatAccessService access;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {

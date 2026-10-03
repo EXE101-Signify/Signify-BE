@@ -3,7 +3,9 @@ package fptu.exe202.signify.signifybe.features.chat.application;
 import fptu.exe202.signify.signifybe.features.chat.application.port.out.ConversationParticipantRepository;
 import fptu.exe202.signify.signifybe.features.chat.application.port.out.ConversationRepository;
 import fptu.exe202.signify.signifybe.features.chat.domain.ConversationType;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -13,11 +15,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatRealtimePublisher {
-    private static final Logger log = LoggerFactory.getLogger(ChatRealtimePublisher.class);
-    private final SimpMessagingTemplate messaging;
-    private final ConversationRepository conversations;
-    private final ConversationParticipantRepository participants;
+    static Logger log = LoggerFactory.getLogger(ChatRealtimePublisher.class);
+    SimpMessagingTemplate messaging;
+    ConversationRepository conversations;
+    ConversationParticipantRepository participants;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void afterCommit(ChatEvent event) {

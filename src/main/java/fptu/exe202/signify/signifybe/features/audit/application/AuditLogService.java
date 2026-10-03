@@ -4,7 +4,9 @@ import fptu.exe202.signify.apiresponse.exception.BadRequestException;
 import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditAction;
 import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditLog;
 import fptu.exe202.signify.signifybe.features.audit.infrastructure.persistence.JpaAdminAuditLogRepository;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,11 +19,14 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuditLogService {
     public static final int MAX_PAGE_SIZE = 100;
 
-    private final JpaAdminAuditLogRepository repository;
-    private final Clock clock;
+
+    JpaAdminAuditLogRepository repository;
+
+    Clock clock;
 
     @Transactional
     public AdminAuditLog record(long adminId, AdminAuditAction action, String targetType,

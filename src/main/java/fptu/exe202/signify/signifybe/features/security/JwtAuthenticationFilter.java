@@ -9,6 +9,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -18,12 +20,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private final JwtService jwtService;
-    private final ApiSecurityErrorHandler errors;
-    private final AccountAccessService accountAccess;
-    private final SessionAccessService sessionAccess;
+
+    JwtService jwtService;
+
+    ApiSecurityErrorHandler errors;
+
+    AccountAccessService accountAccess;
+
+    SessionAccessService sessionAccess;
 
     public JwtAuthenticationFilter(JwtService jwtService, ApiSecurityErrorHandler errors,
                                    AccountAccessService accountAccess, SessionAccessService sessionAccess) {

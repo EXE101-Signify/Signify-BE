@@ -1,6 +1,8 @@
 package fptu.exe202.signify.signifybe.features.chat.api;
 
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -13,8 +15,9 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    private final ChatStompAuthorization authorization;
+    ChatStompAuthorization authorization;
 
     @Value("${app.cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;

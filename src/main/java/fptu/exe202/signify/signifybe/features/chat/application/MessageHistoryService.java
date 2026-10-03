@@ -7,7 +7,9 @@ import fptu.exe202.signify.signifybe.features.chat.domain.MessageAttachment;
 import fptu.exe202.signify.signifybe.features.chat.domain.exception.ConversationException;
 import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.JpaMessageAttachmentRepository;
 import fptu.exe202.signify.signifybe.features.chat.infrastructure.persistence.JpaMessageRepository;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +20,16 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class MessageHistoryService {
-    private final ConversationMembershipService membership;
-    private final ConversationRepository conversations;
-    private final JpaMessageRepository messages;
-    private final JpaMessageAttachmentRepository attachments;
+
+    ConversationMembershipService membership;
+
+    ConversationRepository conversations;
+
+    JpaMessageRepository messages;
+
+    JpaMessageAttachmentRepository attachments;
 
     @Transactional(readOnly = true)
     public MessageHistoryResponse get(long conversationId, long userId, Long before, int limit) {
