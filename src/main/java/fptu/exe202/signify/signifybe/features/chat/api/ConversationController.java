@@ -2,22 +2,8 @@ package fptu.exe202.signify.signifybe.features.chat.api;
 
 import fptu.exe202.signify.apiresponse.response.ApiResponse;
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.ConversationListResponse;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.ConversationResponse;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.CreateConversationRequest;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.ParticipantResponse;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.MessageResponse;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.EditMessageRequest;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.EditedMessageResponse;
-import fptu.exe202.signify.signifybe.features.chat.api.dto.SendMessageRequest;
-import fptu.exe202.signify.signifybe.features.chat.application.ConversationMembershipService;
-import fptu.exe202.signify.signifybe.features.chat.application.ConversationService;
-import fptu.exe202.signify.signifybe.features.chat.application.MessageService;
-import fptu.exe202.signify.signifybe.features.chat.application.AttachmentService;
-import fptu.exe202.signify.signifybe.features.chat.application.AttachmentResponse;
-import fptu.exe202.signify.signifybe.features.chat.application.AttachmentMessageResponse;
-import fptu.exe202.signify.signifybe.features.chat.application.MessageHistoryService;
-import fptu.exe202.signify.signifybe.features.chat.application.MessageHistoryResponse;
+import fptu.exe202.signify.signifybe.features.chat.api.dto.*;
+import fptu.exe202.signify.signifybe.features.chat.application.*;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +32,8 @@ public class ConversationController {
     AttachmentService attachmentService;
 
     MessageHistoryService messageHistoryService;
+
+    ReactionService reactions;
 
     @PostMapping
     public ApiResponse<ConversationResponse> createConversation(
@@ -147,5 +135,26 @@ public class ConversationController {
     ) {
         attachmentService.remove(attachmentId, user.userId());
         return ApiResponse.success("Attachment removed successfully", null);
+    }
+
+    @PostMapping("/{conversationId}/messages/{messageId}/reactions")
+    public ApiResponse<ReactionSummaryResponse> addOrChange(
+            @AuthenticationPrincipal CurrentUser user, @PathVariable long conversationId,
+            @PathVariable long messageId, @Valid @RequestBody ReactionRequest request) {
+        return ApiResponse.success(reactions.addOrChange(conversationId, messageId, user.userId(), request.reaction()));
+    }
+
+    @DeleteMapping("/{conversationId}/messages/{messageId}/reactions/{reaction}")
+    public ApiResponse<ReactionSummaryResponse> remove(
+            @AuthenticationPrincipal CurrentUser user, @PathVariable long conversationId,
+            @PathVariable long messageId, @PathVariable String reaction) {
+        return ApiResponse.success(reactions.remove(conversationId, messageId, user.userId(), reaction));
+    }
+
+    @GetMapping("/{conversationId}/messages/{messageId}/reactions")
+    public ApiResponse<ReactionSummaryResponse> get(
+            @AuthenticationPrincipal CurrentUser user, @PathVariable long conversationId,
+            @PathVariable long messageId) {
+        return ApiResponse.success(reactions.get(conversationId, messageId, user.userId()));
     }
 }

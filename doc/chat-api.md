@@ -449,6 +449,45 @@ Both endpoints return 403 if the requester is outside the conversation or is not
 
 Message removal locks the row in the same transaction used by editing. It sets `message.is_deleted=true` without deleting the message row. `MESSAGE_DELETED` can be published after persistence when realtime delivery is added; this API does not send it yet.
 
+## 11. Message Reactions
+
+An active participant can react to a message in the same conversation. Deleted messages cannot receive reactions or expose their reaction list. Each user has one reaction per message. Sending another reaction changes the existing row; sending the same reaction again leaves it unchanged.
+
+Allowed values: `LIKE`, `LOVE`, `HAHA`, `WOW`, `SAD`, `ANGRY`. Input is case insensitive; responses use uppercase values.
+
+| Operation | Endpoint | Request |
+| --- | --- | --- |
+| Add or change | `POST /api/conversations/{conversationId}/messages/{messageId}/reactions` | `{"reaction":"LOVE"}` |
+| Remove your reaction | `DELETE /api/conversations/{conversationId}/messages/{messageId}/reactions/{reaction}` | No body; `{reaction}` must match your current reaction. |
+| List and count | `GET /api/conversations/{conversationId}/messages/{messageId}/reactions` | No body. |
+
+All three endpoints return the current list and counts. For example:
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "message": "Success",
+  "data": {
+    "messageId": 16,
+    "reactions": [
+      {
+        "reactionId": 3,
+        "userId": 2,
+        "reaction": "LOVE",
+        "createdAt": 1695900300000,
+        "updatedAt": null
+      }
+    ],
+    "counts": {"LOVE": 1}
+  }
+}
+```
+
+`counts` includes only reaction types currently present. The authenticated principal supplies `userId`; clients cannot react on behalf of another user. The database has a unique constraint on `(message_id, user_id)`, and writes lock the message row so simultaneous requests cannot create duplicates. `createdAt` stays the same when changing a reaction; `updatedAt` changes to the current Unix epoch milliseconds.
+
+Errors: 400 for an unsupported reaction, 403 for a user outside the conversation, 404 for a missing or deleted message, a message in another conversation, or a reaction that does not match the user's current reaction on DELETE.
+
 ---
 
 ## Postman Testing Guide
@@ -554,3 +593,9 @@ There is currently no WebSocket endpoint in this controller. The conversation li
 * **URL:** `{{base_url}}/api/v1/conversations/1/messages/16`
 * **Body (raw JSON):** `{"content":"Updated message"}`
 * **Expected Result:** 200 OK with the new `content` and `editedAt`.
+
+### 15. Add, Change, and Remove Reaction
+* **Add:** `POST {{base_url}}/api/conversations/1/messages/16/reactions` with raw JSON `{"reaction":"LIKE"}`.
+* **Change:** repeat the POST with `{"reaction":"LOVE"}`; the existing row is updated.
+* **List:** `GET {{base_url}}/api/conversations/1/messages/16/reactions` to see users and counts.
+* **Remove:** `DELETE {{base_url}}/api/conversations/1/messages/16/reactions/LOVE`.

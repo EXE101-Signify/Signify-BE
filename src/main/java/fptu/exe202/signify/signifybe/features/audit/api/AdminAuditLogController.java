@@ -1,9 +1,6 @@
 package fptu.exe202.signify.signifybe.features.audit.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import tools.jackson.databind.ObjectMapper;
 import fptu.exe202.signify.apiresponse.response.ApiResponse;
 import fptu.exe202.signify.signifybe.features.audit.application.AuditLogService;
 import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditAction;
@@ -12,7 +9,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -22,14 +21,18 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import java.util.Map;
+
 @Validated
 @RestController
 @RequestMapping("/api/admin/audit-logs")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AdminAuditLogController {
-    private final AuditLogService auditLogs;
-    private final ObjectMapper objectMapper;
+    AuditLogService auditLogs;
+
+    ObjectMapper objectMapper;
 
     @GetMapping
     public ResponseEntity<ApiResponse<AuditLogPage>> list(
@@ -47,19 +50,10 @@ public class AdminAuditLogController {
     }
 
     public record AuditLogResponse(long id, long adminId, AdminAuditAction action, String targetType,
-                                   Long targetId, String reason, JsonNode metadata, long createdAt) {
+                                   Long targetId, String reason, Map<String, Object> metadata, long createdAt) {
         static AuditLogResponse of(AdminAuditLog log, ObjectMapper objectMapper) {
             return new AuditLogResponse(log.getId(), log.getAdminId(), log.getAction(), log.getTargetType(),
-                    log.getTargetId(), log.getReason(), parseMetadata(log.getMetadata(), objectMapper), log.getCreatedAt());
-        }
-
-        private static JsonNode parseMetadata(String metadata, ObjectMapper objectMapper) {
-            if (metadata == null) return null;
-            try {
-                return objectMapper.readTree(metadata);
-            } catch (JsonProcessingException exception) {
-                return TextNode.valueOf(metadata);
-            }
+                    log.getTargetId(), log.getReason(), log.getMetadata(), log.getCreatedAt());
         }
     }
 

@@ -1,7 +1,5 @@
 package fptu.exe202.signify.signifybe.features.audit.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fptu.exe202.signify.apiresponse.exception.BadRequestException;
 import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditAction;
 import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditLog;
@@ -23,15 +21,13 @@ public class AuditLogService {
     public static final int MAX_PAGE_SIZE = 100;
 
     private final JpaAdminAuditLogRepository repository;
-    private final ObjectMapper objectMapper;
     private final Clock clock;
 
     @Transactional
     public AdminAuditLog record(long adminId, AdminAuditAction action, String targetType,
-                                Long targetId, String reason, Map<String, ?> metadata) {
-        String serializedMetadata = serialize(metadata);
+                                Long targetId, String reason, Map<String, Object> metadata) {
         return repository.save(new AdminAuditLog(adminId, action, targetType, targetId,
-                reason, serializedMetadata, clock.millis()));
+                reason, metadata, clock.millis()));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -48,14 +44,5 @@ public class AuditLogService {
                 ? null : targetType.strip().toUpperCase();
         return repository.search(adminId, action, normalizedTargetType, targetId, fromTime, toTime,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))));
-    }
-
-    private String serialize(Map<String, ?> metadata) {
-        if (metadata == null || metadata.isEmpty()) return null;
-        try {
-            return objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException exception) {
-            throw new IllegalArgumentException("Audit metadata could not be serialized", exception);
-        }
     }
 }

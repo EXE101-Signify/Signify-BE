@@ -16,6 +16,12 @@ public final class ConversationException extends BaseException {
     public static ConversationException messageNotFound() {
         return new ConversationException(HttpStatus.NOT_FOUND, "Message not found");
     }
+    public static ConversationException reactionNotFound() {
+        return new ConversationException(HttpStatus.NOT_FOUND, "Reaction not found");
+    }
+    public static ConversationException invalidReaction() {
+        return new ConversationException(HttpStatus.BAD_REQUEST, "Unsupported reaction");
+    }
     public static ConversationException notMessageSender() {
         return new ConversationException(HttpStatus.FORBIDDEN, "Only the sender can edit or remove this message or attachment");
     }

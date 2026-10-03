@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-create-admin-audit-log-sequence
+      author: signify
+      changes:
+        - createSequence:
+            schemaName: public
+            sequenceName: admin_audit_log_id_seq
+            startValue: 1
+            incrementBy: 1

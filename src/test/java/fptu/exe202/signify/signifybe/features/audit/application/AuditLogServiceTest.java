@@ -1,6 +1,5 @@
 package fptu.exe202.signify.signifybe.features.audit.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fptu.exe202.signify.apiresponse.exception.BadRequestException;
 import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditAction;
 import fptu.exe202.signify.signifybe.features.audit.domain.AdminAuditLog;
@@ -27,23 +26,24 @@ class AuditLogServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AuditLogService(repository, new ObjectMapper(),
+        service = new AuditLogService(repository,
                 Clock.fixed(Instant.ofEpochMilli(2_000L), ZoneOffset.UTC));
     }
 
     @Test
-    void recordNormalizesReasonAndSerializesMetadata() {
+    void recordNormalizesReasonAndPersistsMetadata() {
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
+        Map<String, Object> metadata = Map.of("before", Map.of("status", "ACTIVE"));
         service.record(1L, AdminAuditAction.BAN_USER, "USER", 2L, "  policy violation  ",
-                Map.of("before", Map.of("status", "ACTIVE")));
+                metadata);
 
         ArgumentCaptor<AdminAuditLog> captor = ArgumentCaptor.forClass(AdminAuditLog.class);
         verify(repository).save(captor.capture());
         AdminAuditLog saved = captor.getValue();
         assertEquals("policy violation", saved.getReason());
         assertEquals(2_000L, saved.getCreatedAt());
-        assertTrue(saved.getMetadata().contains("\"status\":\"ACTIVE\""));
+        assertEquals(metadata, saved.getMetadata());
     }
 
     @Test

@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-message-reaction-integrity
+      author: signify
+      changes:
+        - createSequence:
+            sequenceName: message_reaction_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - sql:
+            dbms: postgresql
+            sql: SELECT setval('message_reaction_id_seq', GREATEST(COALESCE((SELECT MAX(reaction_id) FROM message_reaction), 0) + 1, 1), false);
+        - addDefaultValue:
+            tableName: message_reaction
+            columnName: reaction_id
+            columnDataType: BIGINT
+            defaultValueSequenceNext: message_reaction_id_seq
+        - addUniqueConstraint:
+            tableName: message_reaction
+            columnNames: message_id, user_id
+            constraintName: uq_message_reaction_message_user

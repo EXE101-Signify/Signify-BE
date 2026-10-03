@@ -13,6 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.Collections;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @DataJpaTest(properties = {
@@ -35,7 +38,7 @@ class AuditNotificationPersistenceTest {
                 NotificationType.MISSED_CALL, "Missed call", "content", "VIDEO_CALL", 5L,
                 "missed-call:5", 2_000L));
         AdminAuditLog auditLog = auditLogs.saveAndFlush(new AdminAuditLog(user.getId(),
-                AdminAuditAction.BAN_USER, "USER", 2L, "reason", "{}", 2_000L));
+                AdminAuditAction.BAN_USER, "USER", 2L, "reason", Collections.emptyMap(), 2_000L));
 
         assertNotNull(notification.getId());
         assertNotNull(auditLog.getId());

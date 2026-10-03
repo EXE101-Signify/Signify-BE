@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-create-notification-sequence
+      author: signify
+      changes:
+        - createSequence:
+            schemaName: public
+            sequenceName: notification_id_seq
+            startValue: 1
+            incrementBy: 1

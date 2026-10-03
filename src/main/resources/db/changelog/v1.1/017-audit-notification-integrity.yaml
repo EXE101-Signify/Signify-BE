@@ -1,23 +1,52 @@
 databaseChangeLog:
+  # --- Changeset 1: Create notification_id_seq ---
   - changeSet:
-      id: 017-audit-notification-integrity
+      id: 017-01-create-notification-id-seq
       author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            sequenceExists:
+              sequenceName: notification_id_seq
       changes:
         - createSequence:
             sequenceName: notification_id_seq
             dataType: BIGINT
             startValue: 1
             incrementBy: 1
+
+  # --- Changeset 2: Create admin_audit_log_id_seq ---
+  - changeSet:
+      id: 017-02-create-admin-audit-log-id-seq
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            sequenceExists:
+              sequenceName: admin_audit_log_id_seq
+      changes:
         - createSequence:
             sequenceName: admin_audit_log_id_seq
             dataType: BIGINT
             startValue: 1
             incrementBy: 1
+
+  # --- Changeset 3: Set sequence values ---
+  - changeSet:
+      id: 017-03-set-sequence-values
+      author: signify
+      changes:
         - sql:
             dbms: postgresql
             sql: |
               SELECT setval('notification_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM notifications), 0) + 1, 1), false);
               SELECT setval('admin_audit_log_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM admin_audit_logs), 0) + 1, 1), false);
+
+  # --- Changeset 4: Set default values for id columns ---
+  - changeSet:
+      id: 017-04-set-default-id-values
+      author: signify
+      changes:
         - addDefaultValue:
             tableName: notifications
             columnName: id
@@ -28,18 +57,36 @@ databaseChangeLog:
             columnName: id
             columnDataType: BIGINT
             defaultValueSequenceNext: admin_audit_log_id_seq
-        - addColumn:
-            tableName: notifications
-            columns:
-              - column:
-                  name: deduplication_key
-                  type: VARCHAR(180)
+
+  # --- Changeset 5: Add metadata column to admin_audit_logs ---
+  - changeSet:
+      id: 017-05-add-metadata-column
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            columnExists:
+              tableName: admin_audit_logs
+              columnName: metadata
+      changes:
         - addColumn:
             tableName: admin_audit_logs
             columns:
               - column:
                   name: metadata
                   type: TEXT
+
+  # --- Changeset 6: Add columns to event_publication ---
+  - changeSet:
+      id: 017-06-add-event-publication-columns
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            columnExists:
+              tableName: event_publication
+              columnName: last_resubmission_date
+      changes:
         - addColumn:
             tableName: event_publication
             columns:
@@ -55,6 +102,17 @@ databaseChangeLog:
               - column:
                   name: status
                   type: VARCHAR(30)
+
+  # --- Changeset 7: Create event_publication_archive table ---
+  - changeSet:
+      id: 017-07-create-event-publication-archive
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              tableName: event_publication_archive
+      changes:
         - createTable:
             tableName: event_publication_archive
             columns:
@@ -98,10 +156,17 @@ databaseChangeLog:
               - column:
                   name: status
                   type: VARCHAR(30)
-        - addUniqueConstraint:
-            tableName: notifications
-            columnNames: deduplication_key
-            constraintName: uq_notifications_deduplication_key
+
+  # --- Changeset 8: Create indexes ---
+  - changeSet:
+      id: 017-08-create-notification-index
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            indexExists:
+              indexName: idx_notifications_user_read_created
+      changes:
         - createIndex:
             tableName: notifications
             indexName: idx_notifications_user_read_created
@@ -112,6 +177,16 @@ databaseChangeLog:
                   name: is_read
               - column:
                   name: created_at
+
+  - changeSet:
+      id: 017-09-create-audit-admin-index
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            indexExists:
+              indexName: idx_admin_audit_logs_admin_created
+      changes:
         - createIndex:
             tableName: admin_audit_logs
             indexName: idx_admin_audit_logs_admin_created
@@ -120,6 +195,16 @@ databaseChangeLog:
                   name: admin_id
               - column:
                   name: created_at
+
+  - changeSet:
+      id: 017-10-create-audit-target-index
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            indexExists:
+              indexName: idx_admin_audit_logs_target
+      changes:
         - createIndex:
             tableName: admin_audit_logs
             indexName: idx_admin_audit_logs_target
@@ -128,6 +213,16 @@ databaseChangeLog:
                   name: target_type
               - column:
                   name: target_id
+
+  - changeSet:
+      id: 017-11-create-event-publication-index
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            indexExists:
+              indexName: idx_event_publication_completion_date
+      changes:
         - createIndex:
             tableName: event_publication
             indexName: idx_event_publication_completion_date
