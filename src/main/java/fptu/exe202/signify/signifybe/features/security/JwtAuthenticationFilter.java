@@ -54,7 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             user = accountAccess.requireActiveUser(user.userId(), user.sessionId());
         } catch (AuthException ex) {
             SecurityContextHolder.clearContext();
-            errors.commence(request, response, new BadCredentialsException("Invalid bearer token"));
+            chain.doFilter(request, response);
             return;
         }
         var authentication = UsernamePasswordAuthenticationToken.authenticated(user, null,

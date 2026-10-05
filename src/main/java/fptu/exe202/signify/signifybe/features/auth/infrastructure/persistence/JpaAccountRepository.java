@@ -1,6 +1,7 @@
 package fptu.exe202.signify.signifybe.features.auth.infrastructure.persistence;
 
 import fptu.exe202.signify.signifybe.features.auth.domain.Account;
+import fptu.exe202.signify.signifybe.features.user.domain.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +14,7 @@ public interface JpaAccountRepository extends JpaRepository<Account, Long> {
     Optional<Account> findByUsername(String username);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select a from Account a where a.username = :username")
+    @Query("select a from Account a left join User u on a.userId = u.id where a.username = :username or u.email = :username")
     Optional<Account> lockByUsername(@Param("username") String username);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a where a.userId = :userId")
