@@ -65,7 +65,7 @@ const result = await response.json();
 
 ### `POST /api/auth/login` — Public
 
-Body: `{ "username": "alice", "password": "StrongPass1!", "deviceName": "Chrome on Windows" }`. `deviceName` tùy chọn, tối đa 255 ký tự. `data` giống đăng ký: `{ user, tokens }`. Sai thông tin đăng nhập trả `401`; tài khoản không hoạt động trả `403`.
+Body: `{ "username": "alice", "password": "StrongPass1!", "deviceName": "Chrome on Windows" }` (`username` có thể truyền Username hoặc địa chỉ Email/Gmail của tài khoản). `deviceName` tùy chọn, tối đa 255 ký tự. `data` giống đăng ký: `{ user, tokens }`. Sai thông tin đăng nhập trả `401`; tài khoản không hoạt động trả `403`.
 
 ### `POST /api/auth/refresh` — Public
 
