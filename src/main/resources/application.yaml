@@ -56,6 +56,12 @@ chat:
     sweep-ms: ${CHAT_PRESENCE_SWEEP_MS:15000}
     reconcile-ms: ${CHAT_PRESENCE_RECONCILE_MS:60000}
 
+signify:
+  ai:
+    base-url: ${SIGNIFY_AI_BASE_URL:http://localhost:8000}
+    connect-timeout: ${SIGNIFY_AI_CONNECT_TIMEOUT:2s}
+    read-timeout: ${SIGNIFY_AI_READ_TIMEOUT:5s}
+
 app:
   jwt:
     issuer: ${JWT_ISSUER:signify-be}
