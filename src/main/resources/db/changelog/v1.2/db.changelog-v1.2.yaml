@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/v1.2/027-user-block-integrity.yaml
   - include:
       file: db/changelog/v1.2/028-user-presence.yaml
+  - include:
+      file: db/changelog/v1.2/029-video-call-id-sequence.yaml

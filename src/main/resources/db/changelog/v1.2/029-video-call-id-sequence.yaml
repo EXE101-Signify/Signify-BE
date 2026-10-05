@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-video-call-id-sequence
+      author: signify
+      changes:
+        - createSequence:
+            sequenceName: video_calls_id_seq
+            startValue: 1
+            incrementBy: 1
+  - changeSet:
+      id: 029-align-video-call-id-sequence
+      author: signify
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: SELECT setval('video_calls_id_seq', GREATEST(COALESCE((SELECT MAX(id) FROM video_calls), 0) + 1, 1), false)

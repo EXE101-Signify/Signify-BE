@@ -5,6 +5,8 @@ import fptu.exe202.signify.signifybe.features.auth.application.JwtService;
 import fptu.exe202.signify.signifybe.features.auth.application.SessionAccessService;
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthException;
+import fptu.exe202.signify.signifybe.features.call.application.VideoCallService;
+import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ import java.util.regex.Pattern;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatStompAuthorization implements ChannelInterceptor {
     static Pattern SUBSCRIPTION = Pattern.compile("/user/queue/conversations/([1-9][0-9]*)");
+    static Pattern CALL_SUBSCRIPTION = Pattern.compile("/user/queue/calls/([1-9][0-9]*)");
 
     static Pattern TYPING = Pattern.compile("/app/conversations/([1-9][0-9]*)/typing");
 
@@ -36,6 +39,7 @@ public class ChatStompAuthorization implements ChannelInterceptor {
     AccountAccessService accounts;
 
     PrivateChatAccessService access;
+    VideoCallService calls;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -71,6 +75,17 @@ public class ChatStompAuthorization implements ChannelInterceptor {
             String destination = headers.getDestination();
             if (command == StompCommand.SUBSCRIBE && "/user/queue/notifications".equals(destination))
                 return message;
+            if (command == StompCommand.SUBSCRIBE) {
+                var callSubscription = CALL_SUBSCRIPTION.matcher(destination == null ? "" : destination);
+                if (callSubscription.matches()) {
+                    try {
+                        calls.validateActiveCall(Long.valueOf(callSubscription.group(1)), user);
+                    } catch (NumberFormatException | VideoCallException ex) {
+                        throw new AccessDeniedException("Call destination denied");
+                    }
+                    return message;
+                }
+            }
             if (command == StompCommand.SEND && "/app/presence/heartbeat".equals(destination))
                 return message;
             var match = (command == StompCommand.SUBSCRIBE ? SUBSCRIPTION : TYPING)
