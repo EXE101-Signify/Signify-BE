@@ -1,5 +1,7 @@
 package fptu.exe202.signify.signifybe.features.ai.infrastructure;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fptu.exe202.signify.signifybe.features.ai.api.dto.AiPredictionResponse;
 import fptu.exe202.signify.signifybe.features.ai.domain.exception.AiException;
 import org.slf4j.Logger;
@@ -22,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class AiClient {
     private static final Logger log = LoggerFactory.getLogger(AiClient.class);
+    private static final ObjectMapper JSON = new ObjectMapper();
     private final RestClient http;
 
     public AiClient(RestClient aiRestClient) {
@@ -48,7 +51,7 @@ public class AiClient {
                     .body(AiPredictionResponse.class);
             if (response == null || !response.isValid()) {
                 log.warn("AI prediction returned invalid response");
-                throw AiException.invalidResponse();
+                return null;
             }
             log.debug("AI prediction completed in {} ms: letter={}, confidence={}",
                     TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started),
@@ -62,11 +65,25 @@ public class AiClient {
             log.warn("AI service unavailable");
             throw AiException.unavailable();
         } catch (RestClientResponseException ex) {
+            if (ex.getStatusCode().value() == 422) {
+                String reason = rejectionReason(ex.getResponseBodyAsString());
+                if ("No hand detected".equals(reason)) throw new AiFrameRejectedException(true);
+                if ("Low confidence".equals(reason)) throw new AiFrameRejectedException(false);
+            }
             log.warn("AI service returned HTTP {}", ex.getStatusCode().value());
             throw AiException.unavailable();
         } catch (RestClientException ex) {
             log.warn("AI prediction response could not be decoded");
-            throw AiException.invalidResponse();
+            return null;
+        }
+    }
+
+    private static String rejectionReason(String body) {
+        try {
+            var parsed = JSON.readTree(body);
+            return parsed == null ? "" : parsed.path("error").asText();
+        } catch (JsonProcessingException | IllegalArgumentException ex) {
+            return "";
         }
     }
 

@@ -33,7 +33,8 @@ public class AiPredictionController {
         } catch (IllegalArgumentException ex) {
             throw AiException.invalidImage();
         }
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(
-                ApiResponse.success(predictions.predict(callId, user, image.getBytes(), imageType)));
+        AiPredictionEvent accepted = predictions.predict(callId, user, image.getBytes(), imageType);
+        if (accepted == null) return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ApiResponse.success(accepted));
     }
 }

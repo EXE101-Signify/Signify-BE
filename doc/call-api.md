@@ -101,7 +101,7 @@ curl -X POST "http://localhost:8080/api/calls/42/predictions" \
   -F "image=@hand.jpg;type=image/jpeg"
 ```
 
-The endpoint requires the authenticated caller to be a participant in an `ACCEPTED` call. It validates the call before invoking the AI service and checks it again after inference; if the call became inactive during inference, no event is sent. The backend passes the image to the configured Python service, then returns HTTP 200 with the `AiPredictionEvent` in `data`:
+The endpoint requires the authenticated requester to be a participant in an `ACCEPTED` call. It validates the call before invoking the AI service and checks it again after inference; if the call became inactive during inference, no event is sent. The Python HTTP API classifies each image independently. Spring Boot groups predictions by `callId` and emits an accepted letter after three consecutive valid predictions of the same A-Z character, each at confidence >= 0.75. A held character emits once. Two consecutive Python `No hand detected` responses release it, allowing the same character to be accepted again. A different character needs its own three consecutive predictions. Low-confidence and malformed results reset a candidate but do not release a held character. There is no cooldown or text buffer. When no letter is accepted, the REST endpoint returns HTTP 204 and sends no STOMP event. When a letter is accepted, it returns HTTP 200 with the `AiPredictionEvent` in `data`:
 
 ```json
 {
@@ -115,7 +115,33 @@ The endpoint requires the authenticated caller to be a participant in an `ACCEPT
 }
 ```
 
-The prediction `timestamp` comes from the AI response. The event is also sent to each call participant through the call-specific user queue described below. No transcript is stored.
+The prediction `timestamp` and `confidence` come from the third confirming AI response. The event is also sent to each call participant through the call-specific user queue described below. No transcript is stored. An AI outage resets an unfinished candidate without releasing a held letter or ending the call. The in-memory decoder state is isolated per call and cleared after a terminal call-status event commits. It is local to one Spring Boot process, so multi-instance deployments need shared per-call state or sticky routing. The HTTP API does not use the webcam program's motion tracker; temporal J/Z recognition remains unsupported in this path.
+
+### Live spelling text controls
+
+For this MVP, the receiver is the signer and the caller is the viewer. Only the authenticated receiver of an `ACCEPTED` call can mutate its live spelling text. The backend checks the call and signer identity for accepted AI frames and for each control; neither a role nor a user ID is accepted in the request body. These controls have no body:
+
+```http
+POST /api/calls/{callId}/text/space
+POST /api/calls/{callId}/text/delete
+POST /api/calls/{callId}/text/clear
+Authorization: Bearer <JWT>
+```
+
+Only letters accepted by `StableLetterTracker` are appended to the per-call text buffer. `SPACE` appends one ASCII space after nonempty text unless it already ends in a space. `DELETE` removes one trailing character, including a space. `CLEAR` empties the text. Empty `DELETE` and `CLEAR` are safe. Each successful control returns an `AiTextUpdateEvent` in the normal `ApiResponse.data` and sends the same event to both participants on `/user/queue/calls/{callId}`:
+
+```json
+{
+  "eventId": "<generated UUID>",
+  "type": "AI_TEXT_UPDATE",
+  "callId": 42,
+  "conversationId": 7,
+  "text": "HELLO ",
+  "timestamp": 1720000000000
+}
+```
+
+An accepted AI letter also sends `AI_TEXT_UPDATE` with the appended text; the existing `AI_SIGN_PREDICTION` payload remains unchanged. Text state is in memory, separate for each call, and cleared after a terminal call-status event commits. It is not persisted or shared between backend instances. The buffer is literal ASL fingerspelling text, not semantic VSL translation.
 
 ## Call lifecycle
 
@@ -149,8 +175,7 @@ Errors use the shared `ApiResponse` format. These are errors explicitly mapped b
 | 409 | `Invalid call state transition` | Requested lifecycle transition is not allowed |
 | 409 | `Call is not active` | Call exists and user is a participant, but status is not `ACCEPTED` |
 | 409 | `Messages can only be sent in a PRIVATE conversation with exactly two active participants` | Call creation uses a non-private or invalid participant set |
-| 502 | `AI service unavailable` | AI connection failure or upstream HTTP error |
-| 502 | `Invalid AI service response` | AI response cannot be decoded or fails response validation |
+| 502 | `AI service unavailable` | AI connection failure or unexpected upstream HTTP error |
 | 504 | `AI service timed out` | AI connection/read timeout |
 | 500 | `Internal server error` | Unhandled server error; details are not returned to the client |
 
@@ -188,7 +213,7 @@ There is no STOMP `SEND` destination for call lifecycle or AI prediction. The pr
 
 ### Event received
 
-Each participant receives the `AiPredictionEvent` JSON shown in the REST response example on `/user/queue/calls/{callId}`. There is no global topic broadcast.
+Each participant receives an `AiPredictionEvent` only for an accepted letter and an `AiTextUpdateEvent` for each accepted letter or text control on `/user/queue/calls/{callId}`. There is no global topic broadcast.
 
 `curl` cannot subscribe to STOMP. Use a STOMP-over-WebSocket client to connect and subscribe; use the `curl` example above to trigger a prediction.
 
