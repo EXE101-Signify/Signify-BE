@@ -67,14 +67,25 @@ public class OtpService {
      * @throws BadRequestException if OTP is invalid or expired
      */
     public void verifyOtp(String email, String otp) {
+        validateOtp(email, otp, true);
+    }
+
+    /** Checks an OTP without consuming it, so registration can still use it. */
+    public void checkOtp(String email, String otp) {
+        validateOtp(email, otp, false);
+    }
+
+    private void validateOtp(String email, String otp, boolean consume) {
         String key = OTP_KEY_PREFIX + email;
 
         // Try Redis first
         try {
             Object stored = redisTemplate.opsForValue().get(key);
             if (stored != null && stored.toString().equals(otp)) {
-                redisTemplate.delete(key);
-                localOtpStore.remove(key);
+                if (consume) {
+                    redisTemplate.delete(key);
+                    localOtpStore.remove(key);
+                }
                 log.info("OTP verified (Redis) for {}", email);
                 return;
             }
@@ -85,7 +96,7 @@ public class OtpService {
         // Fallback to local store
         LocalOtp fallback = localOtpStore.get(key);
         if (fallback != null && fallback.isValid() && fallback.otp().equals(otp)) {
-            localOtpStore.remove(key);
+            if (consume) localOtpStore.remove(key);
             log.info("OTP verified (local fallback) for {}", email);
             return;
         }

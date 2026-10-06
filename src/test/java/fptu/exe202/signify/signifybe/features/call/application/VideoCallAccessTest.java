@@ -9,6 +9,7 @@ import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.Jp
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.util.Optional;
@@ -28,7 +29,8 @@ class VideoCallAccessTest {
     @BeforeEach
     void setUp() {
         calls = mock(JpaVideoCallRepository.class);
-        service = new VideoCallService(calls, mock(PrivateChatAccessService.class), Clock.systemUTC());
+        service = new VideoCallService(calls, mock(PrivateChatAccessService.class), Clock.systemUTC(),
+                mock(ApplicationEventPublisher.class));
         call = new VideoCall(7, CALLER.userId(), RECEIVER.userId(), 100);
         when(calls.findById(42L)).thenReturn(Optional.of(call));
     }

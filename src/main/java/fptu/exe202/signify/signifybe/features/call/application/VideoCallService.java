@@ -7,6 +7,7 @@ import fptu.exe202.signify.signifybe.features.call.domain.VideoCallStatus;
 import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
 import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.JpaVideoCallRepository;
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,25 +18,32 @@ public class VideoCallService {
     private final JpaVideoCallRepository calls;
     private final PrivateChatAccessService access;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
-    public VideoCallService(JpaVideoCallRepository calls, PrivateChatAccessService access, Clock clock) {
+    public VideoCallService(JpaVideoCallRepository calls, PrivateChatAccessService access, Clock clock,
+                            ApplicationEventPublisher events) {
         this.calls = calls;
         this.access = access;
         this.clock = clock;
+        this.events = events;
     }
 
     @Transactional
     public VideoCall create(long conversationId, CurrentUser actor) {
         long callerId = userId(actor);
         long receiverId = access.unblockedPeer(conversationId, callerId);
-        return calls.save(new VideoCall(conversationId, callerId, receiverId, clock.millis()));
+        VideoCall call = calls.save(new VideoCall(conversationId, callerId, receiverId, clock.millis()));
+        events.publishEvent(VideoCallEvent.incoming(call, call.getCreatedAt()));
+        return call;
     }
 
     @Transactional
     public VideoCall accept(long callId, CurrentUser actor) {
         VideoCall call = lockedParticipantCall(callId, actor);
         requireReceiver(call, actor.userId());
-        call.accept(clock.millis());
+        long now = clock.millis();
+        call.accept(now);
+        events.publishEvent(VideoCallEvent.statusChanged(call, now));
         return call;
     }
 
@@ -44,13 +52,16 @@ public class VideoCallService {
         VideoCall call = lockedParticipantCall(callId, actor);
         requireReceiver(call, actor.userId());
         call.reject();
+        events.publishEvent(VideoCallEvent.statusChanged(call, clock.millis()));
         return call;
     }
 
     @Transactional
     public VideoCall complete(long callId, CurrentUser actor) {
         VideoCall call = lockedParticipantCall(callId, actor);
-        call.complete(clock.millis());
+        long now = clock.millis();
+        call.complete(now);
+        events.publishEvent(VideoCallEvent.statusChanged(call, now));
         return call;
     }
 

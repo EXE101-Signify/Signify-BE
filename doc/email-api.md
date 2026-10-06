@@ -20,7 +20,7 @@
 
 ## 1. Send OTP (Registration)
 
-Gửi mã OTP 6 số đến email. Endpoint verify kiểm tra và tiêu thụ OTP; endpoint đăng ký hiện không yêu cầu OTP và không tự đặt `emailVerified=true` sau bước verify.
+Gửi mã OTP 6 số đến email. Sau khi nhận mã, gửi `email` và `otp` trong part JSON `request` của `POST /api/users/register`. Mã hợp lệ được tiêu thụ khi đăng ký và tài khoản mới có `emailVerified=true`.
 
 **Endpoint**: `POST /api/email/otp/send`
 
@@ -60,7 +60,7 @@ Gửi mã OTP 6 số đến email. Endpoint verify kiểm tra và tiêu thụ OT
 
 ## 2. Verify OTP (Registration)
 
-Kiểm tra mã OTP và xóa mã sau khi xác minh thành công. Bước này chưa cập nhật `users.email_verified`.
+Kiểm tra mã OTP trước khi đăng ký. Bước này không tiêu thụ mã và chưa cập nhật `users.email_verified`; request đăng ký vẫn phải gửi mã OTP để backend xác minh và lưu trạng thái.
 
 **Endpoint**: `POST /api/email/otp/verify`
 
@@ -83,7 +83,7 @@ Kiểm tra mã OTP và xóa mã sau khi xác minh thành công. Bước này ch�
 ```json
 {
   "success": true,
-  "message": "Email verified successfully",
+  "message": "OTP verified successfully",
   "data": null
 }
 ```
@@ -239,7 +239,7 @@ Xác minh OTP và đổi mật khẩu mới.
    ↓
 4. FE gọi POST /api/email/otp/verify  { email, otp }
    ↓
-5. Nếu thành công → FE gọi POST /api/users/register bằng multipart với part `request` là JSON và part `avatar` tùy chọn; bước đăng ký hiện không nhận OTP đã verify.
+5. Nếu thành công → FE gọi POST /api/users/register bằng multipart với part `request` là JSON gồm `email`, `otp` và thông tin tài khoản; part `avatar` tùy chọn. Backend kiểm tra và tiêu thụ OTP, rồi lưu `email_verified=true`.
 ```
 
 ### 🔹 Forgot Password Flow
@@ -275,6 +275,6 @@ Xác minh OTP và đổi mật khẩu mới.
 - **OTP có thời hạn 5 phút** — sau 5 phút sẽ tự hết hạn
 - **OTP là 6 chữ số** (100000 – 999999)
 - **Mỗi lần gửi/resend**, OTP cũ sẽ bị **ghi đè** bởi OTP mới
-- **Sau khi verify thành công**, OTP sẽ bị **xóa** khỏi hệ thống
+- **Sau khi đăng ký hoặc đặt lại mật khẩu thành công**, OTP sẽ bị **xóa** khỏi hệ thống. Endpoint kiểm tra OTP đăng ký không tiêu thụ mã.
 - Email được gửi **bất đồng bộ** (async) nên response trả về ngay lập tức
 - Tất cả endpoints đều là **public** — không cần Bearer token

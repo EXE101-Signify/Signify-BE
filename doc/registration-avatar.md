@@ -4,7 +4,7 @@ Send `POST /api/users/register` as `multipart/form-data`:
 
 | Part | Type |
 | --- | --- |
-| request | JSON part (`application/json`), required; contains `username`, `password` and optional `email`, `firstName`, `lastName` |
+| request | JSON part (`application/json`), required; contains `username`, `password`, `email`, `otp` and optional `firstName`, `lastName` |
 | avatar | File, optional |
 
 The service validates and uploads the avatar through `StorageService`, then stores
@@ -21,7 +21,7 @@ Example using curl (replace the file path):
 
 ```sh
 curl -X POST http://localhost:8080/api/users/register \
-  -F 'request={"username":"example-user","password":"ExamplePassword123!","firstName":"Example"};type=application/json' \
+  -F 'request={"username":"example-user","password":"ExamplePassword123!","email":"example@example.com","otp":"123456","firstName":"Example"};type=application/json' \
   -F 'avatar=@/path/to/avatar.png'
 ```
 

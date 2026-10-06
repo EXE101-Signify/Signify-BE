@@ -10,6 +10,8 @@ import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.Jp
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -18,6 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.*;
 
 class VideoCallServiceTest {
@@ -28,6 +31,7 @@ class VideoCallServiceTest {
 
     private JpaVideoCallRepository calls;
     private PrivateChatAccessService access;
+    private ApplicationEventPublisher events;
     private VideoCallService service;
     private VideoCall call;
 
@@ -35,16 +39,22 @@ class VideoCallServiceTest {
     void setUp() {
         calls = mock(JpaVideoCallRepository.class);
         access = mock(PrivateChatAccessService.class);
+        events = mock(ApplicationEventPublisher.class);
         service = new VideoCallService(calls, access,
-                Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC));
+                Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC), events);
         call = new VideoCall(7, CALLER.userId(), RECEIVER.userId(), NOW - 100);
+        ReflectionTestUtils.setField(call, "id", 42L);
         when(calls.findLockedById(42L)).thenReturn(Optional.of(call));
     }
 
     @Test
     void createsCallingUsingAuthenticatedCallerAndConversationPeer() {
         when(access.unblockedPeer(7, CALLER.userId())).thenReturn(RECEIVER.userId());
-        when(calls.save(any(VideoCall.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(calls.save(any(VideoCall.class))).thenAnswer(invocation -> {
+            VideoCall saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 42L);
+            return saved;
+        });
         VideoCall created = service.create(7, CALLER);
         assertEquals(VideoCallStatus.CALLING, created.getStatus());
         assertEquals(CALLER.userId(), created.getCallerId());
@@ -52,6 +62,15 @@ class VideoCallServiceTest {
         assertEquals(7, created.getConversationId());
         assertEquals(NOW, created.getCreatedAt());
         verify(access).unblockedPeer(7, CALLER.userId());
+        VideoCallEvent event = publishedEvent();
+        assertEquals(VideoCallEvent.INCOMING_CALL, event.type());
+        assertEquals(42, event.callId());
+        assertEquals(7, event.conversationId());
+        assertEquals(CALLER.userId(), event.callerId());
+        assertEquals(RECEIVER.userId(), event.receiverId());
+        assertEquals(VideoCallStatus.CALLING, event.status());
+        assertEquals(NOW, event.timestamp());
+        assertNotNull(event.eventId());
     }
 
     @Test
@@ -59,11 +78,13 @@ class VideoCallServiceTest {
         VideoCall result = service.accept(42, RECEIVER);
         assertEquals(VideoCallStatus.ACCEPTED, result.getStatus());
         assertEquals(NOW, result.getStartedAt());
+        assertStatusEvent(VideoCallStatus.ACCEPTED);
     }
 
     @Test
     void receiverRejectsCalling() {
         assertEquals(VideoCallStatus.REJECTED, service.reject(42, RECEIVER).getStatus());
+        assertStatusEvent(VideoCallStatus.REJECTED);
     }
 
     @Test
@@ -72,6 +93,7 @@ class VideoCallServiceTest {
         VideoCall result = service.complete(42, CALLER);
         assertEquals(VideoCallStatus.COMPLETED, result.getStatus());
         assertEquals(NOW, result.getEndedAt());
+        assertStatusEvent(VideoCallStatus.COMPLETED);
     }
 
     @Test
@@ -136,5 +158,44 @@ class VideoCallServiceTest {
     void callerCannotAcceptOrRejectOwnCall() {
         assertThrows(VideoCallException.class, () -> service.accept(42, CALLER));
         assertThrows(VideoCallException.class, () -> service.reject(42, CALLER));
+    }
+
+    private VideoCallEvent publishedEvent() {
+        var captor = org.mockito.ArgumentCaptor.forClass(VideoCallEvent.class);
+        verify(events, times(1)).publishEvent(captor.capture());
+        return captor.getValue();
+    }
+
+    private void assertStatusEvent(VideoCallStatus status) {
+        VideoCallEvent event = publishedEvent();
+        assertEquals(VideoCallEvent.CALL_STATUS_CHANGED, event.type());
+        assertEquals(7, event.conversationId());
+        assertEquals(CALLER.userId(), event.callerId());
+        assertEquals(RECEIVER.userId(), event.receiverId());
+        assertEquals(status, event.status());
+        assertEquals(NOW, event.timestamp());
+        assertNotNull(event.eventId());
+    }
+
+    @Test
+    void duplicateAcceptAndRejectAfterAcceptPublishNoFurtherEvents() {
+        service.accept(42, RECEIVER);
+        assertThrows(VideoCallException.class, () -> service.accept(42, RECEIVER));
+        assertThrows(VideoCallException.class, () -> service.reject(42, RECEIVER));
+        verify(events, times(1)).publishEvent(isA(VideoCallEvent.class));
+    }
+
+    @Test
+    void endingCallingCallPublishesNothing() {
+        assertThrows(VideoCallException.class, () -> service.complete(42, CALLER));
+        verifyNoInteractions(events);
+    }
+
+    @Test
+    void nonparticipantPublishesNothing() {
+        assertThrows(VideoCallException.class, () -> service.accept(42, STRANGER));
+        assertThrows(VideoCallException.class, () -> service.reject(42, STRANGER));
+        assertThrows(VideoCallException.class, () -> service.complete(42, STRANGER));
+        verifyNoInteractions(events);
     }
 }

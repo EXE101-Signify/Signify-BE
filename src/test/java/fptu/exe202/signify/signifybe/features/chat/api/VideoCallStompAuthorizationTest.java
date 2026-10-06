@@ -40,6 +40,39 @@ class VideoCallStompAuthorizationTest {
     }
 
     @Test
+    void activeParticipantMaySubscribeToWebRtcQueueAndSendSignals() {
+        Message<?> subscription = subscription("/user/queue/calls/42/webrtc", user);
+        Message<?> send = signal("/app/calls/42/webrtc", user);
+        assertSame(subscription, authorization.preSend(subscription, null));
+        assertSame(send, authorization.preSend(send, null));
+        verify(calls, times(2)).validateActiveCall(42L, user);
+    }
+
+    @Test
+    void inactiveOrNonparticipantCannotSendOrSubscribe() {
+        for (VideoCallException failure : new VideoCallException[]{VideoCallException.forbidden(),
+                VideoCallException.notFound(), VideoCallException.notActive()}) {
+            reset(calls);
+            doThrow(failure).when(calls).validateActiveCall(42L, user);
+            assertThrows(AccessDeniedException.class,
+                    () -> authorization.preSend(subscription("/user/queue/calls/42/webrtc", user), null));
+            assertThrows(AccessDeniedException.class,
+                    () -> authorization.preSend(signal("/app/calls/42/webrtc", user), null));
+        }
+    }
+
+    @Test
+    void unauthenticatedAndUnscopedSignalingIsDenied() {
+        assertThrows(AccessDeniedException.class,
+                () -> authorization.preSend(signal("/app/calls/42/webrtc", null), null));
+        for (String destination : new String[]{"/queue/calls/42/webrtc", "/user/20/queue/calls/42/webrtc",
+                "/app/calls/42/webrtc/other", "/app/calls/0/webrtc"}) {
+            assertThrows(AccessDeniedException.class,
+                    () -> authorization.preSend(signal(destination, user), null));
+        }
+    }
+
+    @Test
     void nonparticipantCannotSubscribeToCallQueue() {
         doThrow(VideoCallException.forbidden()).when(calls).validateActiveCall(42L, user);
         assertThrows(AccessDeniedException.class,
@@ -60,8 +93,52 @@ class VideoCallStompAuthorizationTest {
         verifyNoInteractions(calls);
     }
 
+    @Test
+    void authenticatedUserMaySubscribeToOwnIncomingAndStatusQueues() {
+        for (String destination : new String[]{"/user/queue/calls/incoming", "/user/queue/calls/status"}) {
+            Message<?> message = subscription(destination, user);
+            assertSame(message, authorization.preSend(message, null));
+        }
+        verifyNoInteractions(calls);
+    }
+
+    @Test
+    void unauthenticatedUserCannotSubscribeToIncomingOrStatus() {
+        for (String destination : new String[]{"/user/queue/calls/incoming", "/user/queue/calls/status"}) {
+            assertThrows(AccessDeniedException.class,
+                    () -> authorization.preSend(subscription(destination, null), null));
+        }
+    }
+
+    @Test
+    void directBrokerAndForeignUserDestinationsAreDenied() {
+        for (String destination : new String[]{"/queue/calls/incoming", "/queue/calls/status",
+                "/user/20/queue/calls/incoming", "/user/20/queue/calls/status"}) {
+            assertThrows(AccessDeniedException.class,
+                    () -> authorization.preSend(subscription(destination, user), null));
+        }
+    }
+
+    @Test
+    void clientsCannotSendCallEvents() {
+        for (String destination : new String[]{"/user/queue/calls/incoming", "/user/queue/calls/status"}) {
+            StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.SEND);
+            headers.setDestination(destination);
+            headers.setUser(user);
+            Message<?> message = MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
+            assertThrows(AccessDeniedException.class, () -> authorization.preSend(message, null));
+        }
+    }
+
     private static Message<?> subscription(String destination, CurrentUser user) {
         StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        headers.setDestination(destination);
+        headers.setUser(user);
+        return MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());
+    }
+
+    private static Message<?> signal(String destination, CurrentUser user) {
+        StompHeaderAccessor headers = StompHeaderAccessor.create(StompCommand.SEND);
         headers.setDestination(destination);
         headers.setUser(user);
         return MessageBuilder.createMessage(new byte[0], headers.getMessageHeaders());

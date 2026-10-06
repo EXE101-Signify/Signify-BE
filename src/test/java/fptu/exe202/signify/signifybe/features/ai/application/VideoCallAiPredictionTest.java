@@ -12,6 +12,7 @@ import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.Jp
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
@@ -40,7 +41,8 @@ class VideoCallAiPredictionTest {
         repository = mock(JpaVideoCallRepository.class);
         ai = mock(AiService.class);
         messaging = mock(SimpMessagingTemplate.class);
-        var calls = new VideoCallService(repository, mock(PrivateChatAccessService.class), Clock.systemUTC());
+        var calls = new VideoCallService(repository, mock(PrivateChatAccessService.class), Clock.systemUTC(),
+                mock(ApplicationEventPublisher.class));
         predictions = new AiPredictionService(calls, ai, messaging);
         call = new VideoCall(7, CALLER.userId(), RECEIVER.userId(), 100);
         when(repository.findById(42L)).thenReturn(Optional.of(call));

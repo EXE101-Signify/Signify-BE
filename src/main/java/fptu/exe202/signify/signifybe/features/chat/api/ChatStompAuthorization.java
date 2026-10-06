@@ -29,8 +29,10 @@ import java.util.regex.Pattern;
 public class ChatStompAuthorization implements ChannelInterceptor {
     static Pattern SUBSCRIPTION = Pattern.compile("/user/queue/conversations/([1-9][0-9]*)");
     static Pattern CALL_SUBSCRIPTION = Pattern.compile("/user/queue/calls/([1-9][0-9]*)");
+    static Pattern WEBRTC_SUBSCRIPTION = Pattern.compile("/user/queue/calls/([1-9][0-9]*)/webrtc");
 
     static Pattern TYPING = Pattern.compile("/app/conversations/([1-9][0-9]*)/typing");
+    static Pattern WEBRTC_SEND = Pattern.compile("/app/calls/([1-9][0-9]*)/webrtc");
 
     JwtService jwt;
 
@@ -75,11 +77,26 @@ public class ChatStompAuthorization implements ChannelInterceptor {
             String destination = headers.getDestination();
             if (command == StompCommand.SUBSCRIBE && "/user/queue/notifications".equals(destination))
                 return message;
+            if (command == StompCommand.SUBSCRIBE && ("/user/queue/calls/incoming".equals(destination)
+                    || "/user/queue/calls/status".equals(destination)))
+                return message;
             if (command == StompCommand.SUBSCRIBE) {
                 var callSubscription = CALL_SUBSCRIPTION.matcher(destination == null ? "" : destination);
-                if (callSubscription.matches()) {
+                var webrtcSubscription = WEBRTC_SUBSCRIPTION.matcher(destination == null ? "" : destination);
+                if (callSubscription.matches() || webrtcSubscription.matches()) {
                     try {
-                        calls.validateActiveCall(Long.valueOf(callSubscription.group(1)), user);
+                        calls.validateActiveCall(Long.valueOf(callSubscription.matches() ? callSubscription.group(1) : webrtcSubscription.group(1)), user);
+                    } catch (NumberFormatException | VideoCallException ex) {
+                        throw new AccessDeniedException("Call destination denied");
+                    }
+                    return message;
+                }
+            }
+            if (command == StompCommand.SEND) {
+                var webrtcSend = WEBRTC_SEND.matcher(destination == null ? "" : destination);
+                if (webrtcSend.matches()) {
+                    try {
+                        calls.validateActiveCall(Long.valueOf(webrtcSend.group(1)), user);
                     } catch (NumberFormatException | VideoCallException ex) {
                         throw new AccessDeniedException("Call destination denied");
                     }

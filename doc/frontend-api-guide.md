@@ -49,6 +49,7 @@ form.append("request", new Blob([JSON.stringify({
   username: "alice",
   password: "StrongPass1!",
   email: "alice@example.com",
+  otp: "123456",
   firstName: "Alice",
   lastName: "Nguyen"
 })], { type: "application/json" }));
@@ -61,7 +62,7 @@ const response = await fetch(`${baseUrl}/api/users/register`, {
 const result = await response.json();
 ```
 
-`username` bắt buộc, tối đa 100 ký tự. `password` bắt buộc, tối thiểu 8 ký tự, tối đa 72 byte UTF-8, cần chữ thường, chữ hoa, số và ký tự đặc biệt. `email` tùy chọn, nếu có phải đúng định dạng và tối đa 150 ký tự. `firstName`, `lastName` tùy chọn, mỗi trường tối đa 100 ký tự. Avatar chấp nhận JPEG/PNG/WebP/GIF, tối đa 5 MiB theo cấu hình mặc định. `data` là `{ "user": UserResponse, "tokens": TokenResponse }`; URL avatar nằm trong `data.user.avatar`. Username/email đã tồn tại hoặc mật khẩu trùng theo kiểm tra hiện tại trả `409`. DTO validation trả `400`; kiểm tra mật khẩu trong service hiện trả `409` nếu vi phạm quy tắc; file quá lớn `413`, loại ảnh không hỗ trợ `415`.
+`username` bắt buộc, tối đa 100 ký tự. `password` bắt buộc, tối thiểu 8 ký tự, tối đa 72 byte UTF-8, cần chữ thường, chữ hoa, số và ký tự đặc biệt. `email` bắt buộc, đúng định dạng và tối đa 150 ký tự. `otp` bắt buộc, gồm 6 chữ số nhận từ `/api/email/otp/send` hoặc `/api/email/otp/resend`. `firstName`, `lastName` tùy chọn, mỗi trường tối đa 100 ký tự. Avatar chấp nhận JPEG/PNG/WebP/GIF, tối đa 5 MiB theo cấu hình mặc định. `data` là `{ "user": UserResponse, "tokens": TokenResponse }`; đăng ký thành công trả `data.user.emailVerified=true`. Username/email đã tồn tại hoặc mật khẩu trùng theo kiểm tra hiện tại trả `409`. DTO validation hoặc OTP sai/hết hạn trả `400`; kiểm tra mật khẩu trong service hiện trả `409` nếu vi phạm quy tắc; file quá lớn `413`, loại ảnh không hỗ trợ `415`.
 
 ### `POST /api/auth/login` — Public
 
@@ -186,7 +187,7 @@ Mỗi endpoint sau dùng JSON và trả `200` với thông báo trong `message`,
 | `POST /api/email/forgot-password/send` | `{ "email": "alice@example.com" }` | Gửi OTP đặt lại mật khẩu; email chưa đăng ký trả `404` |
 | `POST /api/email/forgot-password/verify` | `{ "email": "alice@example.com", "otp": "123456", "newPassword": "NewPass1!" }` | Kiểm tra OTP rồi đổi mật khẩu; OTP sai/hết hạn trả `400`; mật khẩu theo quy tắc đăng ký |
 
-`/otp/verify` chỉ xác nhận và tiêu thụ OTP. Controller đăng ký hiện **không** nhận mã OTP và không kiểm tra trạng thái verify; không hiển thị `emailVerified=true` chỉ vì gọi `/otp/verify`. Luồng quên mật khẩu dùng cùng kho OTP theo email, nên tránh chạy đồng thời hai luồng OTP trên cùng một email. Với quên mật khẩu, kiểm tra quy tắc mật khẩu mới ở frontend trước khi gửi: service tiêu thụ OTP trước khi kiểm tra độ phức tạp của mật khẩu. Mật khẩu không hợp lệ có thể trả `400` ở DTO hoặc `409` ở service.
+`/otp/verify` chỉ kiểm tra mã, không tiêu thụ OTP hoặc cập nhật user. Sau bước này, gửi cùng `email` và `otp` trong request đăng ký; chỉ khi đăng ký thành công mới hiển thị `emailVerified=true`. Luồng quên mật khẩu dùng cùng kho OTP theo email, nên tránh chạy đồng thời hai luồng OTP trên cùng một email. Với quên mật khẩu, kiểm tra quy tắc mật khẩu mới ở frontend trước khi gửi: service tiêu thụ OTP trước khi kiểm tra độ phức tạp của mật khẩu. Mật khẩu không hợp lệ có thể trả `400` ở DTO hoặc `409` ở service.
 
 ## Chat
 

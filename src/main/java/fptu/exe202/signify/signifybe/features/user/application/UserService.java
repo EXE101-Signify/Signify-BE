@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import fptu.exe202.signify.signifybe.features.storage.application.StorageService;
+import fptu.exe202.signify.signifybe.features.email.application.OtpService;
 
 @Service
 @RequiredArgsConstructor
@@ -40,9 +41,10 @@ public class UserService {
     Clock clock;
 
     StorageService storageService;
+    OtpService otpService;
 
     @Transactional
-    public AuthResult register(String username, String password, String email, String firstName,
+    public AuthResult register(String username, String password, String email, String otp, String firstName,
                                String lastName, MultipartFile avatar, SessionMetadata metadata) {
         //validation password
         UserValidation.validatePassword(password);
@@ -65,7 +67,9 @@ public class UserService {
             }
         }
 
+        otpService.verifyOtp(email, otp);
         User newUser = new User(email, firstName, lastName, clock.millis());
+        newUser.setEmailVerified(true);
 
         User user = userRepository.addUser(newUser);
         Account account = accountRepository.insertAccount(new Account(user.getId(), username, passwordEncoder.encode(password), clock.millis()));
