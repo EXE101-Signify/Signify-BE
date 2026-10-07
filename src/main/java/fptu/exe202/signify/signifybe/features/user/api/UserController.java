@@ -44,7 +44,7 @@ public class UserController {
             @RequestPart(value = "avatar", required = false) MultipartFile avatar,
             HttpServletRequest http
     ) {
-        var result = userService.register(request.username(), request.password(), request.email(),
+        var result = userService.register(request.username(), request.password(), request.email(), request.otp(),
                 request.firstName(), request.lastName(), avatar, metadata(http, null));
         return noStore(ApiResponse.success("Account registered successfully", authMapper.toAuthResponse(result)));
     }

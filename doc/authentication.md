@@ -247,9 +247,12 @@ These are POSIX shell examples; Windows users can run them through Git Bash or u
 ```bash
 BASE=http://localhost:8080
 
-# Register; email and names may be omitted. The request part must be JSON.
+# Send an OTP first, then register with the same email and OTP. The request part must be JSON.
+curl -X POST "$BASE/api/email/otp/send" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice@example.com"}'
 curl -X POST "$BASE/api/users/register" \
-  -F 'request={"username":"alice","password":"StrongPass1!","email":"alice@example.com","firstName":"Alice"};type=application/json'
+  -F 'request={"username":"alice","password":"StrongPass1!","email":"alice@example.com","otp":"123456","firstName":"Alice"};type=application/json'
 
 # Login from a device.
 curl -X POST "$BASE/api/auth/login" \
@@ -319,7 +322,7 @@ There were zero failures and zero errors. `git diff --check` also passed. The ex
 No live AWS/R2/Redis/SMTP services or real credentials were used. No existing application database was modified. PostgreSQL-specific sequence reseeding was not executed against a live PostgreSQL instance; the complete changelog was exercised against H2, where that PostgreSQL-only SQL is skipped. The full application was compiled/packaged, not booted against the user's external services.
 ## Scope and limitations
 
-- No OAuth provider flow, password reset, email verification, or password change is implemented. The existing OAuth dependency and table are preserved.
+- No OAuth provider flow or authenticated password change is implemented. Registration requires an email OTP, and the password reset flow uses a separate OTP endpoint. The existing OAuth dependency and table are preserved.
 - Revoked refresh sessions are retained for audit; no cleanup scheduler is introduced.
 - No login throttling or account-lockout policy is introduced; those policies remain a separate concern.
 - Storage key ownership and object-level authorization are unchanged. JWT authentication alone does not establish ownership of an image key.

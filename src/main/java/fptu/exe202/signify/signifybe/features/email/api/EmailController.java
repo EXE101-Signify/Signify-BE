@@ -54,8 +54,8 @@ public class EmailController {
      */
     @PostMapping("/otp/verify")
     public ApiResponse<Void> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
-        otpService.verifyOtp(request.email(), request.otp());
-        return ApiResponse.success("Email verified successfully", null);
+        otpService.checkOtp(request.email(), request.otp());
+        return ApiResponse.success("OTP verified successfully", null);
     }
 
     /**

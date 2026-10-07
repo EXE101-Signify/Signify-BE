@@ -165,7 +165,7 @@ users
 #### TABLE: video_calls
 **Mục đích**: Lưu lịch sử cuộc gọi video.
 **Các column quan trọng**:
-- `status`: Trạng thái (MISSED, COMPLETED, BUSY).
+- `status`: Trạng thái cuộc gọi: `CALLING`, `ACCEPTED`, `REJECTED`, `MISSED`, `COMPLETED`, `BUSY`. `ACCEPTED` là cuộc gọi đang kết nối; chỉ chuyển từ `CALLING` sang `ACCEPTED`, `REJECTED`, `MISSED` hoặc `BUSY`, và từ `ACCEPTED` sang `COMPLETED`.
 - `started_at`, `ended_at`: Thời gian bắt đầu và kết thúc để tính thời lượng.
 
 **Quan hệ**:

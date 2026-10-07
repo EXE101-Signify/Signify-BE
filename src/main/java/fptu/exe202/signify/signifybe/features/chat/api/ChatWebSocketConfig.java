@@ -46,8 +46,9 @@ public class ChatWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
-        registration.setMessageSizeLimit(8 * 1024);
-        registration.setSendBufferSizeLimit(64 * 1024);
+        // SDP can exceed the old 8 KiB chat limit; signaling remains bounded.
+        registration.setMessageSizeLimit(64 * 1024);
+        registration.setSendBufferSizeLimit(128 * 1024);
         registration.setSendTimeLimit(10_000);
     }
 }
