@@ -29,6 +29,31 @@ public interface JpaUserRepository extends JpaRepository<User, Long> {
             """)
     Page<User> searchUsers(@Param("search") String search, Pageable pageable);
 
+    @Query("""
+            select u.id as userId, a.username as username, u.fullName as fullName, u.avatar as avatar,
+                   relationship.status as relationshipStatus, relationship.requestedById as requestedById
+              from User u
+              join Account a on a.userId = u.id
+              left join FriendRelationship relationship
+                on (relationship.userLowId = :currentUserId and relationship.userHighId = u.id)
+                or (relationship.userHighId = :currentUserId and relationship.userLowId = u.id)
+             where u.id <> :currentUserId
+               and u.deletedAt is null
+               and a.status = 'ACTIVE'
+               and (lower(a.username) like lower(concat('%', :search, '%'))
+                    or lower(u.email) like lower(concat('%', :search, '%')))
+               and not exists (
+                   select block.id from UserBlock block
+                    where block.deletedAt is null
+                      and ((block.blockerId = :currentUserId and block.blockedId = u.id)
+                           or (block.blockerId = u.id and block.blockedId = :currentUserId))
+               )
+             order by a.username asc, u.id asc
+            """)
+    Page<FriendSearchProjection> searchFriendCandidates(@Param("currentUserId") long currentUserId,
+                                                        @Param("search") String search,
+                                                        Pageable pageable);
+
     Optional<User> findByEmail(String email);
 
     @Modifying

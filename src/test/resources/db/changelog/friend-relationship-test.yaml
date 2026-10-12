@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/v1.0/001-create-users.yaml
+  - include:
+      file: db/changelog/v1.0/002-create-account.yaml
+  - include:
+      file: db/changelog/v1.0/010-create-user-blocks.yaml
+  - changeSet:
+      id: friend-test-user-sequence
+      author: signify-test
+      changes:
+        - createSequence:
+            sequenceName: auth_users_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+  - include:
+      file: db/changelog/v1.2/028-user-presence.yaml
+  - include:
+      file: db/changelog/v1.2/027-user-block-integrity.yaml
+  - include:
+      file: db/changelog/v1.2/029-friend-relationships.yaml

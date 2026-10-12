@@ -74,6 +74,20 @@ public class NotificationService {
                 "MESSAGE", messageId, key, clock.millis())));
     }
 
+    @Transactional
+    public Optional<Notification> createFriendRequest(long recipientId, long relationshipId) {
+        return create(recipientId, NotificationType.FRIEND_REQUEST, "New friend request",
+                "You received a friend request", "FRIEND_RELATIONSHIP", relationshipId,
+                "friend-request:" + relationshipId + ":" + recipientId);
+    }
+
+    @Transactional
+    public Optional<Notification> createFriendRequestAccepted(long recipientId, long relationshipId) {
+        return create(recipientId, NotificationType.FRIEND_REQUEST_ACCEPTED, "Friend request accepted",
+                "Your friend request was accepted", "FRIEND_RELATIONSHIP", relationshipId,
+                "friend-request-accepted:" + relationshipId + ":" + recipientId);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Notification> findChatMessage(long recipientId, long messageId) {
         return repository.findByDeduplicationKeyAndUserId(

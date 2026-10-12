@@ -1,0 +1,103 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-friend-relationships
+      author: signify
+      changes:
+        - createSequence:
+            sequenceName: friend_relationships_id_seq
+            dataType: BIGINT
+            startValue: 1
+            incrementBy: 1
+        - createTable:
+            tableName: friend_relationships
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_low_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_high_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_by_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: accepted_at
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: friend_relationships
+            baseColumnNames: user_low_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_friend_relationships_low_user
+        - addForeignKeyConstraint:
+            baseTableName: friend_relationships
+            baseColumnNames: user_high_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_friend_relationships_high_user
+        - addForeignKeyConstraint:
+            baseTableName: friend_relationships
+            baseColumnNames: requested_by_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_friend_relationships_requester
+        - addUniqueConstraint:
+            tableName: friend_relationships
+            columnNames: user_low_id, user_high_id
+            constraintName: uq_friend_relationships_pair
+        - sql:
+            sql: ALTER TABLE friend_relationships ADD CONSTRAINT ck_friend_relationships_order CHECK (user_low_id < user_high_id)
+        - sql:
+            sql: ALTER TABLE friend_relationships ADD CONSTRAINT ck_friend_relationships_requester CHECK (requested_by_id IN (user_low_id, user_high_id))
+        - sql:
+            sql: ALTER TABLE friend_relationships ADD CONSTRAINT ck_friend_relationships_status CHECK (status IN ('PENDING', 'ACCEPTED'))
+        - createIndex:
+            tableName: friend_relationships
+            indexName: idx_friend_relationships_low_status
+            columns:
+              - column:
+                  name: user_low_id
+              - column:
+                  name: status
+        - createIndex:
+            tableName: friend_relationships
+            indexName: idx_friend_relationships_high_status
+            columns:
+              - column:
+                  name: user_high_id
+              - column:
+                  name: status
+        - createIndex:
+            tableName: friend_relationships
+            indexName: idx_friend_relationships_requester_status
+            columns:
+              - column:
+                  name: requested_by_id
+              - column:
+                  name: status
