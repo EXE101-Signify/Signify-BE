@@ -13,7 +13,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 /** Spring MVC method validation errors not yet handled by the shared response library. */
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = {AdminUserController.class, UserController.class})
+@RestControllerAdvice(assignableTypes = {AdminUserController.class, UserController.class, FriendController.class})
 public class UserValidationExceptionHandler {
     @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ApiResponse<Void>> invalidParameters(HttpServletRequest request) {

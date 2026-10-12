@@ -39,7 +39,7 @@ Every filter is optional. `action` is one of `UPDATE_USER`, `BAN_USER`, or `UNBA
 | PATCH | `/api/notifications/{notificationId}/read` | Mark one owned notification as read |
 | PATCH | `/api/notifications/read-all` | Mark all owned notifications as read |
 
-Notification IDs belonging to another user are deliberately returned as not found. Mark-read operations are idempotent. Supported types are `MISSED_CALL`, `SUBSCRIPTION_EXPIRING`, and `SUBSCRIPTION_EXPIRED`.
+Notification IDs belonging to another user are deliberately returned as not found. Mark-read operations are idempotent. Supported types are `DIRECT_MESSAGE`, `FRIEND_REQUEST`, `FRIEND_REQUEST_ACCEPTED`, `MISSED_CALL`, `SUBSCRIPTION_EXPIRING`, and `SUBSCRIPTION_EXPIRED`.
 
 ## Publishing events
 

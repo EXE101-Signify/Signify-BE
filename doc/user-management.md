@@ -89,3 +89,29 @@ Authenticated USER or ADMIN accounts can manage their own block list. The server
 | `GET` | `/api/users/blocked` | Lists only active blocks created by the authenticated user. |
 
 The list and POST response contain the target's `userId`, `fullName`, `avatar`, and `blockedAt` (Unix epoch milliseconds). Responses use `Cache-Control: no-store`. Blocking yourself returns 400; blocking a missing or deleted target returns 404. A single row per `(blocker_id, blocked_id)` is reused when blocking again, with a database unique constraint to prevent duplicate active blocks.
+
+Blocking also permanently removes any pending friend request or accepted friendship between the two users. Unblocking does not restore it.
+
+## Friends
+
+Authenticated USER and ADMIN accounts can search for active accounts and manage their own friend relationships. All responses use the existing `ApiResponse` envelope and `Cache-Control: no-store`.
+
+| Method | Endpoint | Result |
+| --- | --- | --- |
+| `GET` | `/api/friends/search?q=&page=0&size=20` | Search username or email using a case-insensitive substring. |
+| `POST` | `/api/friends/requests/{targetUserId}` | Send a friend request. Repeating the same request is idempotent. |
+| `GET` | `/api/friends/requests/incoming?page=0&size=20` | List received pending requests, newest first. |
+| `GET` | `/api/friends/requests/outgoing?page=0&size=20` | List sent pending requests, newest first. |
+| `POST` | `/api/friends/requests/{requestId}/accept` | Accept a request as its receiver. |
+| `POST` | `/api/friends/requests/{requestId}/reject` | Reject a request as its receiver. |
+| `DELETE` | `/api/friends/requests/{requestId}` | Cancel a request as its sender. |
+| `GET` | `/api/friends?page=0&size=20` | List accepted friends by newest friendship first. |
+| `DELETE` | `/api/friends/{friendUserId}` | Remove an accepted friendship. |
+
+Search requires a nonblank `q` of at most 150 characters. It excludes the authenticated account, banned/deleted accounts, and accounts where either user has blocked the other. Search responses expose `userId`, `username`, `fullName`, `avatar`, and `relationshipStatus`; email is searchable but never returned. Relationship status is `NONE`, `INCOMING_PENDING`, `OUTGOING_PENDING`, or `FRIEND`.
+
+Request list items contain `requestId`, the other user's public friend profile, and `createdAt`. Friend list items contain `relationshipId`, the public profile, and `friendsSince`. Public friend profiles contain only `userId`, `username`, `fullName`, and `avatar`. All lists are zero-based pages with size 1–100 and default size 20.
+
+Sending a request while the reverse request is pending automatically accepts the relationship. Sending while already friends returns 409. Self-requests return 400. Request IDs not owned in the required sender/receiver role are returned as not found. Rejecting, cancelling, removing a friend, or blocking physically removes the current relationship, so a new request can be sent later without a cooldown.
+
+New requests create a `FRIEND_REQUEST` notification for the receiver. Normal and automatic acceptance create a `FRIEND_REQUEST_ACCEPTED` notification for the original sender. Notification deduplication keys prevent retries from creating duplicates; notification delivery remains available through the existing REST notification API rather than WebSocket push.

@@ -6,6 +6,7 @@ import fptu.exe202.signify.signifybe.features.user.domain.User;
 import fptu.exe202.signify.signifybe.features.user.domain.UserBlock;
 import fptu.exe202.signify.signifybe.features.user.domain.exception.BlockException;
 import fptu.exe202.signify.signifybe.features.user.infrastructure.persistence.JpaUserBlockRepository;
+import fptu.exe202.signify.signifybe.features.user.infrastructure.persistence.JpaFriendRelationshipRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,16 +19,14 @@ import java.util.List;
 public class BlockService {
     private final JpaUserBlockRepository blocks;
     private final UserRepository users;
+    private final JpaFriendRelationshipRepository relationships;
     private final Clock clock;
 
     @Transactional
     public BlockedUserResponse block(long blockerId, long blockedId) {
         if (blockerId == blockedId) throw BlockException.selfBlock();
-        // Locking the blocker serializes first-time and repeated requests from this account.
-        users.lockUserById(blockerId).orElseThrow(BlockException::userNotFound);
-        User target = users.findUserById(blockedId)
-                .filter(user -> !user.isDeleted())
-                .orElseThrow(BlockException::userNotFound);
+        User target = lockPairAndGetTarget(blockerId, blockedId);
+        relationships.deletePair(Math.min(blockerId, blockedId), Math.max(blockerId, blockedId));
         var existing = blocks.findByBlockerIdAndBlockedId(blockerId, blockedId);
         if (existing.isPresent() && existing.get().isActive()) {
             return response(target, existing.get());
@@ -40,6 +39,18 @@ public class BlockService {
 
     private BlockedUserResponse response(User target, UserBlock block) {
         return new BlockedUserResponse(target.getId(), target.getFullName(), target.getAvatar(), block.getCreatedAt());
+    }
+
+    private User lockPairAndGetTarget(long blockerId, long blockedId) {
+        long lowId = Math.min(blockerId, blockedId);
+        long highId = Math.max(blockerId, blockedId);
+        User low = users.lockUserById(lowId)
+                .filter(user -> !user.isDeleted())
+                .orElseThrow(BlockException::userNotFound);
+        User high = users.lockUserById(highId)
+                .filter(user -> !user.isDeleted())
+                .orElseThrow(BlockException::userNotFound);
+        return low.getId() == blockedId ? low : high;
     }
 
     @Transactional
