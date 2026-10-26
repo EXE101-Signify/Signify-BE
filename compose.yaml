@@ -1,0 +1,86 @@
+name: ${SIGNIFY_COMPOSE_PROJECT_NAME:-signify-local}
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment:
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/signify}
+      DB_USERNAME: ${DB_USERNAME:-signify}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+
+      REDIS_HOST: ${SIGNIFY_COMPOSE_REDIS_HOST:-redis}
+      REDIS_PORT: ${SIGNIFY_COMPOSE_REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${SIGNIFY_COMPOSE_REDIS_PASSWORD:-}
+
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_REFRESH_ENCRYPTION_KEY: ${JWT_REFRESH_ENCRYPTION_KEY:?Set JWT_REFRESH_ENCRYPTION_KEY in .env}
+
+      SMTP_MAIL_USERNAME: ${SMTP_MAIL_USERNAME:?Set SMTP_MAIL_USERNAME in .env}
+      SMTP_MAIL_PASSWORD: ${SMTP_MAIL_PASSWORD:?Set SMTP_MAIL_PASSWORD in .env}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+
+      PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:?Set PAYOS_CLIENT_ID in .env}
+      PAYOS_API_KEY: ${PAYOS_API_KEY:?Set PAYOS_API_KEY in .env}
+      PAYOS_CHECKSUM_KEY: ${PAYOS_CHECKSUM_KEY:?Set PAYOS_CHECKSUM_KEY in .env}
+
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-r2}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      R2_REGION: ${R2_REGION:-auto}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
+
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+
+      SIGNIFY_AI_BASE_URL: ${SIGNIFY_AI_BASE_URL:-http://host.docker.internal:8000}
+    ports:
+      - "127.0.0.1:${SIGNIFY_COMPOSE_BACKEND_HOST_PORT:-18080}:8080"
+    networks:
+      - app
+      - data
+    healthcheck:
+      # There is no application health endpoint. Any HTTP response proves the server is listening.
+      test: ["CMD", "curl", "--silent", "--show-error", "--output", "/dev/null", "--max-time", "2", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 3s
+      start_period: 90s
+      retries: 5
+
+  frontend:
+    build:
+      context: ../signify-fe/Signify-FE
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${SIGNIFY_COMPOSE_PUBLIC_API_URL:-http://localhost:18080}
+        VITE_WEBRTC_ICE_SERVERS: ${SIGNIFY_COMPOSE_WEBRTC_ICE_SERVERS:-}
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${SIGNIFY_COMPOSE_GEMINI_API_KEY:-}
+    ports:
+      - "127.0.0.1:${SIGNIFY_COMPOSE_FRONTEND_HOST_PORT:-13000}:3000"
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
+
+networks:
+  app:
+    driver: bridge
+  data:
+    driver: bridge
+    internal: true

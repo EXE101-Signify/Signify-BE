@@ -6,6 +6,7 @@ import fptu.exe202.signify.signifybe.features.auth.domain.Account;
 import fptu.exe202.signify.signifybe.features.auth.domain.UserSession;
 import fptu.exe202.signify.signifybe.features.user.domain.exception.UserException;
 import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -15,17 +16,12 @@ import java.util.Optional;
 
 @Repository
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@RequiredArgsConstructor
 public class JpaAuthPersistence implements AccountRepository, UserSessionRepository {
 
     JpaAccountRepository accounts;
 
     JpaUserSessionRepository sessions;
-
-    public JpaAuthPersistence(JpaAccountRepository accounts, JpaUserSessionRepository sessions) {
-        this.accounts = accounts;
-        this.sessions = sessions;
-    }
-
     @Override
     public boolean usernameExists(String username) {
         return accounts.existsByUsername(username);

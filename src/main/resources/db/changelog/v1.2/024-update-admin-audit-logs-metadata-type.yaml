@@ -2,13 +2,14 @@ databaseChangeLog:
   - changeSet:
       id: 024-update-admin-audit-logs-metadata-type
       author: signify
+      validCheckSum: '9:f494d84bdefcda19035969a327fde592'
       changes:
-        - addColumn:
-            schemaName: public
-            tableName: admin_audit_logs
-            columns:
-              - column:
-                  name: metadata
-                  type: jsonb
-                  constraints:
-                    nullable: true
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE public.admin_audit_logs
+              ALTER COLUMN metadata TYPE JSONB
+              USING CASE
+                WHEN metadata IS NULL OR btrim(metadata::text) = '' THEN NULL
+                ELSE metadata::text::jsonb
+              END

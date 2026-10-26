@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/v1.2/029-friend-relationships.yaml
   - include:
       file: db/changelog/v1.2/029-video-call-id-sequence.yaml
+  - include:
+      file: db/changelog/v1.2/030-notification-deduplication-key.yaml
