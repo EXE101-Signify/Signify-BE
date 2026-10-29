@@ -1,0 +1,72 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-signify}
+      DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in Dockploy}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Dockploy}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dockploy}
+      JWT_REFRESH_ENCRYPTION_KEY: ${JWT_REFRESH_ENCRYPTION_KEY:-}
+      JWT_ISSUER: ${JWT_ISSUER:-signify-be}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-signify-client}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-900000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      SMTP_MAIL_USERNAME: ${SMTP_MAIL_USERNAME:?Set SMTP_MAIL_USERNAME in Dockploy}
+      SMTP_MAIL_PASSWORD: ${SMTP_MAIL_PASSWORD:?Set SMTP_MAIL_PASSWORD in Dockploy}
+      PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:?Set PAYOS_CLIENT_ID in Dockploy}
+      PAYOS_API_KEY: ${PAYOS_API_KEY:?Set PAYOS_API_KEY in Dockploy}
+      PAYOS_CHECKSUM_KEY: ${PAYOS_CHECKSUM_KEY:?Set PAYOS_CHECKSUM_KEY in Dockploy}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-r2}
+      R2_BUCKET: ${R2_BUCKET:?Set R2_BUCKET in Dokploy}
+      R2_ENDPOINT: ${R2_ENDPOINT:?Set R2_ENDPOINT in Dokploy}
+      R2_REGION: ${R2_REGION:-auto}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?Set R2_ACCESS_KEY_ID in Dokploy}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?Set R2_SECRET_ACCESS_KEY in Dokploy}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
+      STORAGE_IMAGE_MAX_SIZE: ${STORAGE_IMAGE_MAX_SIZE:-5242880}
+      STORAGE_MULTIPART_MAX_REQUEST_SIZE: ${STORAGE_MULTIPART_MAX_REQUEST_SIZE:-6MB}
+      SIGNIFY_AI_BASE_URL: ${SIGNIFY_AI_BASE_URL:-http://localhost:8000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-signify}
+      POSTGRES_USER: ${DB_USERNAME:?Set DB_USERNAME in Dockploy}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Dockploy}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

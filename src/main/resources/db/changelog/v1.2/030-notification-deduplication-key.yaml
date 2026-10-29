@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-notification-deduplication-key
+      author: signify
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                schemaName: public
+                tableName: notifications
+                columnName: deduplication_key
+      changes:
+        - addColumn:
+            schemaName: public
+            tableName: notifications
+            columns:
+              - column:
+                  name: deduplication_key
+                  type: varchar(180)
+                  constraints:
+                    nullable: true
+                    unique: true
+                    uniqueConstraintName: uk_notifications_deduplication_key
