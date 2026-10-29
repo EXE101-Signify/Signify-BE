@@ -69,12 +69,12 @@ public class R2StorageConfiguration {
         this.credentials = StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(
                         StorageProperties.requireText(
-                                environment.getProperty("R2_ACCESS_KEY_ID"),
-                                "R2_ACCESS_KEY_ID"
+                                environment.getProperty("R2_ACCESS_KEY"),
+                                "R2_ACCESS_KEY"
                         ),
                         StorageProperties.requireText(
-                                environment.getProperty("R2_SECRET_ACCESS_KEY"),
-                                "R2_SECRET_ACCESS_KEY"
+                                environment.getProperty("R2_SECRET_KEY"),
+                                "R2_SECRET_KEY"
                         )
                 )
         );
