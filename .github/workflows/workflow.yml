@@ -1,0 +1,118 @@
+name: Build and deploy signify-be
+
+'on':
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signify-be-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPOSITORY: signify-be
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Java 17 and Gradle cache
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Test
+        run: bash ./gradlew --no-daemon --console=plain test
+      - name: Build executable JAR
+        run: bash ./gradlew --no-daemon --console=plain bootJar
+
+  publish_and_deploy:
+    needs: ci
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check deployment configuration
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_REGISTRY: ${{ vars.DOCKERHUB_REGISTRY }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APPLICATION_ID: ${{ vars.DOKPLOY_APPLICATION_ID }}
+        run: |
+          for name in DOCKERHUB_USERNAME DOCKERHUB_REGISTRY DOCKERHUB_TOKEN DOKPLOY_URL DOKPLOY_API_KEY DOKPLOY_APPLICATION_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub secret or variable: ${name}"
+              exit 1
+            fi
+          done
+          if [ "$DOCKERHUB_REGISTRY" != 'docker.io' ]; then
+            echo '::error::DOCKERHUB_REGISTRY must be docker.io for this Docker Hub deployment.'
+            exit 1
+          fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.DOCKERHUB_REGISTRY }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push Linux amd64 image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ vars.DOCKERHUB_REGISTRY }}/${{ vars.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPOSITORY }}:latest
+            ${{ vars.DOCKERHUB_REGISTRY }}/${{ vars.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha,scope=signify-be
+          cache-to: type=gha,scope=signify-be,mode=max
+      - name: Deploy exact image in Dokploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APPLICATION_ID: ${{ vars.DOKPLOY_APPLICATION_ID }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_REGISTRY: ${{ vars.DOCKERHUB_REGISTRY }}
+        run: |
+          set -euo pipefail
+          head_sha="$(gh api "repos/${GITHUB_REPOSITORY}/branches/main" --jq '.commit.sha')"
+          if [ "$head_sha" != "$GITHUB_SHA" ]; then
+            echo '::notice::A newer main commit exists; skipping deployment of this image.'
+            exit 0
+          fi
+          image="${DOCKERHUB_REGISTRY}/${DOCKERHUB_USERNAME}/${IMAGE_REPOSITORY}:${GITHUB_SHA}"
+          base_url="${DOKPLOY_URL%/}"
+          if [[ ! "$base_url" =~ ^https://[^/]+$ ]]; then
+            echo '::error::DOKPLOY_URL must be an HTTPS origin without a path.'
+            exit 1
+          fi
+          update_body="$(jq -nc --arg applicationId "$DOKPLOY_APPLICATION_ID" --arg dockerImage "$image" '{applicationId:$applicationId,dockerImage:$dockerImage}')"
+          deploy_body="$(jq -nc --arg applicationId "$DOKPLOY_APPLICATION_ID" --arg title "GitHub ${GITHUB_SHA}" '{applicationId:$applicationId,title:$title}')"
+          curl --fail --silent --show-error --request POST "${base_url}/api/application.update" \
+            --header "x-api-key: ${DOKPLOY_API_KEY}" \
+            --header 'Content-Type: application/json' \
+            --data "$update_body" > /dev/null
+          curl --fail --silent --show-error --request POST "${base_url}/api/application.deploy" \
+            --header "x-api-key: ${DOKPLOY_API_KEY}" \
+            --header 'Content-Type: application/json' \
+            --data "$deploy_body" > /dev/null
+          echo "Dokploy deployment requested for ${image}"
