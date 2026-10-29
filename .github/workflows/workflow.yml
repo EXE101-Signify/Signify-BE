@@ -52,7 +52,7 @@ jobs:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
-          DOKPLOY_APPLICATION_ID: ${{ vars.DOKPLOY_APPLICATION_ID }}
+          DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
         run: |
           for name in DOCKERHUB_USERNAME DOCKERHUB_REGISTRY DOCKERHUB_TOKEN DOKPLOY_URL DOKPLOY_API_KEY DOKPLOY_APPLICATION_ID; do
             if [ -z "${!name}" ]; then
@@ -89,7 +89,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
-          DOKPLOY_APPLICATION_ID: ${{ vars.DOKPLOY_APPLICATION_ID }}
+          DOKPLOY_APPLICATION_ID: ${{ secrets.DOKPLOY_APPLICATION_ID }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_REGISTRY: ${{ secrets.DOCKERHUB_REGISTRY }}
         run: |
