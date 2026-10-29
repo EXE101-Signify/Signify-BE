@@ -5,11 +5,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-signify}
+      DB_URL: ${DB_URL:?Set Neon DB_URL}
       DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in Dockploy}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Dockploy}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_HOST: ${REDIS_HOST:?Set REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dockploy}
       JWT_REFRESH_ENCRYPTION_KEY: ${JWT_REFRESH_ENCRYPTION_KEY:-}
       JWT_ISSUER: ${JWT_ISSUER:-signify-be}
@@ -32,16 +33,10 @@ services:
       STORAGE_IMAGE_MAX_SIZE: ${STORAGE_IMAGE_MAX_SIZE:-5242880}
       STORAGE_MULTIPART_MAX_REQUEST_SIZE: ${STORAGE_MULTIPART_MAX_REQUEST_SIZE:-6MB}
       SIGNIFY_AI_BASE_URL: ${SIGNIFY_AI_BASE_URL:-http://localhost:8000}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     expose:
       - "8080"
 
   postgres:
-    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-signify}
@@ -68,5 +63,4 @@ services:
       retries: 5
 
 volumes:
-  postgres_data:
   redis_data:
