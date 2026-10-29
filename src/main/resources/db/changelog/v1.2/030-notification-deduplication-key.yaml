@@ -2,6 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: 030-notification-deduplication-key
       author: signify
+
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -9,6 +10,7 @@ databaseChangeLog:
                 schemaName: public
                 tableName: notifications
                 columnName: deduplication_key
+
       changes:
         - addColumn:
             schemaName: public
@@ -16,8 +18,4 @@ databaseChangeLog:
             columns:
               - column:
                   name: deduplication_key
-                  type: varchar(180)
-                  constraints:
-                    nullable: true
-                    unique: true
-                    uniqueConstraintName: uk_notifications_deduplication_key
+                  type: VARCHAR(180)

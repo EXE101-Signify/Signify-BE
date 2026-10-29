@@ -3,8 +3,12 @@ databaseChangeLog:
       id: 024-update-admin-audit-logs-metadata-type
       author: signify
       changes:
-        - modifyDataType:
+        - addColumn:
             schemaName: public
             tableName: admin_audit_logs
-            columnName: metadata
-            newDataType: jsonb
+            columns:
+              - column:
+                  name: metadata
+                  type: jsonb
+                  constraints:
+                    nullable: true
