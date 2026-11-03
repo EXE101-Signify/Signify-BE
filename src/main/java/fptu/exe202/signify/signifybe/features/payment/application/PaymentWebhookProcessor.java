@@ -5,6 +5,7 @@ import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 class PaymentWebhookProcessor {
@@ -64,6 +66,7 @@ class PaymentWebhookProcessor {
         event.setWebhookPayload(safePayload);
 
         if (order == null) {
+            log.info("PayOS webhook ignored stage=order_lookup reason=unknown_order orderCode={}", data.orderCode());
             event.setProcessingStatus(WebhookProcessingStatus.IGNORED.getValue());
             event.setProcessingErrorMessage("Unknown payment order");
             event.setProcessedAt(now);
