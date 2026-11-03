@@ -48,6 +48,9 @@ spring:
     client-id: ${PAYOS_CLIENT_ID}
     api-key: ${PAYOS_API_KEY}
     checksum-key: ${PAYOS_CHECKSUM_KEY}
+    return-url: ${PAYOS_RETURN_URL}
+    cancel-url: ${PAYOS_CANCEL_URL}
+    webhook-url: ${PAYOS_WEBHOOK_URL}
 
 # JWT
 chat:

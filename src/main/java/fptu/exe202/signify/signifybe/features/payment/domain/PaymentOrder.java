@@ -106,4 +106,14 @@ public class PaymentOrder {
         this.userSubscription = subscription;
     }
 
+    public void attachPaymentLink(String linkId, String url, Long expiresAt, long now) {
+        requirePending();
+        if (providerPaymentLinkId != null || checkoutUrl != null || linkId == null || linkId.isBlank()
+                || url == null || url.isBlank()) throw PaymentOrderException.invalidTransition();
+        providerPaymentLinkId = linkId;
+        checkoutUrl = url;
+        orderExpiresAt = expiresAt;
+        updatedAt = now;
+    }
+
 }
