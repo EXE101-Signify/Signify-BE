@@ -7,22 +7,24 @@ import fptu.exe202.signify.signifybe.features.payment.domain.PaymentOrder;
 import fptu.exe202.signify.signifybe.features.payment.domain.PaymentOrderException;
 import fptu.exe202.signify.signifybe.features.payment.domain.PaymentOrderStatus;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.JpaPaymentOrderRepository;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaymentLinkService {
-    private final JpaPaymentOrderRepository orders;
-    private final PaymentGateway gateway;
-    private final Clock clock;
 
-    public PaymentLinkService(JpaPaymentOrderRepository orders, PaymentGateway gateway, Clock clock) {
-        this.orders = orders;
-        this.gateway = gateway;
-        this.clock = clock;
-    }
+    JpaPaymentOrderRepository orders;
+
+    PaymentGateway gateway;
+
+    Clock clock;
 
     @Transactional
     public PaymentLinkResponse createPaymentLink(long orderId, CurrentUser actor) {

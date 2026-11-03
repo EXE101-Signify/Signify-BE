@@ -232,6 +232,23 @@ Body: `{ "content": "Xin chào!", "messageType": "TEXT" }`. `content` bắt bu�
 
 Controller hiện chưa có API đọc lịch sử message hoặc WebSocket. Danh sách conversation chỉ có `lastMessage`; frontend chưa thể tải toàn bộ lịch sử qua các route này.
 
+## Signify Premium và PayOS
+
+Chi tiết nghiệp vụ, ví dụ JSON và checklist xem [payment-subscription.md](payment-subscription.md). Gói duy nhất hiện nay là `PREMIUM_MONTHLY`, 49.000 VND cho một tháng lịch; cả hai người trong cuộc gọi cần Premium. Không gửi `userId` hoặc giá từ frontend; server lấy user từ Bearer token và giá từ database.
+
+| Method | Route | Quyền | `data` |
+| --- | --- | --- | --- |
+| GET | `/api/subscription/plans` | Public | Mảng `{planCode, planName, monthlyPriceAmount, currencyCode, durationMonths, unlimitedVideoCalls}` |
+| GET | `/api/subscription/me` | Bearer | `{planCode, planName, subscriptionStatus, subscriptionStartAt, subscriptionEndAt, isPremiumActive}` |
+| GET | `/api/subscription/history` | Bearer | Mảng các kỳ thuê bao |
+| POST | `/api/payments/orders` | Bearer | Đơn `PENDING` và `checkoutUrl`; body rỗng |
+| GET | `/api/payments/orders/{paymentOrderId}` | Bearer | Đơn của chính người dùng |
+| GET | `/api/payments/history?page=0&size=20` | Bearer | Mảng đơn, tối đa 100 mục/trang |
+
+`POST /api/payments/orders` trả các trường `paymentOrderId`, `orderCode`, `totalAmount`, `currencyCode`, `orderStatus`, `planCode`, `orderType`, `checkoutUrl`, `orderExpiresAt`, `paidAt`, `createdAt`. Điều hướng tới `checkoutUrl`, rồi sau khi PayOS chuyển về `returnUrl` hãy đọc lại đơn và `/api/subscription/me`. **Không** cấp Premium dựa vào URL redirect; chỉ backend xử lý webhook PayOS đã xác minh mới kích hoạt kỳ. `checkoutUrl` có thể `null` ở endpoint đọc nếu link chưa được lưu. Các thời điểm là epoch milliseconds. Trạng thái `PENDING` của kỳ gia hạn tương lai không có nghĩa Premium đã có hiệu lực; dùng `isPremiumActive` để điều khiển UI gọi video hiện tại.
+
+`POST /api/payment/payos/webhook` dành riêng cho PayOS; frontend không gọi và không gửi kết quả thanh toán tự khai báo.
+
 ## Storage image
 
 `StorageController` hiện khai báo hai route dưới đây, đều cần Bearer USER/ADMIN. **Chưa có `POST /api/storage/images`**. Avatar được upload trong lúc đăng ký qua `POST /api/users/register`; `PATCH /api/users/profile` chỉ nhận chuỗi avatar. `StorageService.uploadChatImage` là phương thức nội bộ, chưa có route upload chat image.

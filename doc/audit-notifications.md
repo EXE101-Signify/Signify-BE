@@ -53,4 +53,4 @@ events.publishEvent(new SubscriptionExpiredEvent(subscriptionId, userId, expires
 
 `NotificationEventHandler` consumes these with Spring Modulith. The event publication table makes delivery recoverable, while `notifications.deduplication_key` prevents a retried event from creating a duplicate user notification.
 
-The current repository does not yet contain call or subscription application services, so event producers and the subscription expiry scheduler must be connected when those modules are implemented.
+The repository now contains call and subscription application services. `SubscriptionService.reconcileStatuses` updates due/expired subscription rows, and `CallExpiryJob` closes calls whose participants lost Premium. The subscription service does **not** currently publish `SubscriptionExpiringEvent` or `SubscriptionExpiredEvent`, so those notification types remain available in the schema/API but automatic subscription expiry notifications are not wired. See [payment-subscription.md](payment-subscription.md).

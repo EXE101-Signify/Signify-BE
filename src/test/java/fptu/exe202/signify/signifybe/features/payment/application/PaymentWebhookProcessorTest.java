@@ -56,6 +56,40 @@ class PaymentWebhookProcessorTest {
         verifyNoInteractions(subscriptions, transactions);
     }
 
+    @Test void wrongCurrencyCannotActivate() {
+        when(orders.findLockedByOrderCode(123L)).thenReturn(Optional.of(order));
+        var wrong = new VerifiedPayOSWebhook(123L, 49_000L, "USD", "ref-1", "link-1",
+                "00", null, "00", true);
+
+        assertThrows(PaymentWebhookException.class, () -> processor.process(wrong));
+        verifyNoInteractions(subscriptions, transactions, gateway);
+    }
+
+    @Test void providerMustConfirmPaidBeforeActivation() {
+        when(orders.findLockedByOrderCode(123L)).thenReturn(Optional.of(order));
+        when(gateway.get(123L)).thenReturn(new PaymentGateway.GatewayPaymentLink(
+                123L, 49_000L, "link-1", null, "PENDING", null));
+
+        assertThrows(PaymentWebhookException.class, () -> processor.process(success));
+        assertEquals("PENDING", order.getStatus());
+        verifyNoInteractions(subscriptions, transactions);
+        verify(events, never()).save(any());
+    }
+
+    @Test void duplicateTransactionReferenceCannotActivateAnotherMonth() {
+        when(orders.findLockedByOrderCode(123L)).thenReturn(Optional.of(order));
+        PaymentTransaction previous = mock(PaymentTransaction.class);
+        when(previous.getOrder()).thenReturn(order);
+        when(transactions.findByPaymentProviderAndProviderTransactionReference("PAYOS", "ref-1"))
+                .thenReturn(Optional.of(previous));
+
+        processor.process(success);
+
+        verify(transactions, never()).save(any());
+        verifyNoInteractions(subscriptions, gateway);
+        verify(events).save(argThat(e -> "IGNORED".equals(e.getProcessingStatus())));
+    }
+
     @Test void unknownOrderCannotActivate() {
         when(orders.findLockedByOrderCode(123)).thenReturn(Optional.empty());
         assertThrows(PaymentOrderException.class, () -> processor.process(success));
@@ -88,7 +122,7 @@ class PaymentWebhookProcessorTest {
         verify(events).save(argThat(e -> "IGNORED".equals(e.getProcessingStatus())));
     }
 
-    @Test void activationFailurePropagatesSoDatabaseTransactionCanRollBack() {
+    @Test void activationFailurePropagatesToTransactionalCaller() {
         when(orders.findLockedByOrderCode(123)).thenReturn(Optional.of(order));
         when(gateway.get(123)).thenReturn(paidLink());
         when(subscriptions.activateSubscriptionAfterPayment(123)).thenThrow(new IllegalStateException("database failure"));
@@ -96,7 +130,7 @@ class PaymentWebhookProcessorTest {
         verify(events, never()).save(any());
     }
 
-    @Test void serializedConcurrentDuplicatesActivateOnce() throws Exception {
+    @Test void duplicateCallbacksSerializedInTestActivateOnce() throws Exception {
         when(orders.findLockedByOrderCode(123)).thenReturn(Optional.of(order));
         when(gateway.get(123)).thenReturn(paidLink());
         AtomicReference<PaymentWebhookEvent> saved = new AtomicReference<>();

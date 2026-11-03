@@ -44,4 +44,20 @@ class PayOSPaymentGatewayTest {
 
         assertThrows(PaymentGatewayException.class, () -> gateway.get(123L));
     }
+
+    @Test void rejectsSdkCreateResponseWithoutCheckoutUrl() {
+        PayOS sdk = mock(PayOS.class);
+        PaymentRequestsService requests = mock(PaymentRequestsService.class);
+        when(sdk.paymentRequests()).thenReturn(requests);
+        CreatePaymentLinkResponse incomplete = new CreatePaymentLinkResponse();
+        incomplete.setOrderCode(123L);
+        incomplete.setAmount(49_000L);
+        incomplete.setPaymentLinkId("link-1");
+        when(requests.create(any(CreatePaymentLinkRequest.class))).thenReturn(incomplete);
+
+        PayOSPaymentGateway gateway = new PayOSPaymentGateway(sdk,
+                "https://app.example/return", "https://app.example/cancel");
+
+        assertThrows(PaymentGatewayException.class, () -> gateway.create(123L, 49_000L));
+    }
 }

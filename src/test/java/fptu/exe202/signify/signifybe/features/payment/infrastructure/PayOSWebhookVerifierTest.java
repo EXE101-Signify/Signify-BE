@@ -10,6 +10,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class PayOSWebhookVerifierTest {
+    @Test void rejectsMalformedPayloadBeforeCallingSdk() {
+        PayOS sdk = mock(PayOS.class);
+
+        assertThrows(PaymentWebhookException.class,
+                () -> new PayOSWebhookVerifier(sdk).verify(Map.of("data", Map.of("orderCode", 123))));
+        verifyNoInteractions(sdk);
+    }
+
     @Test void invalidSignatureNeverProducesVerifiedEvent() {
         PayOS sdk = mock(PayOS.class);
         WebhooksService webhooks = mock(WebhooksService.class);

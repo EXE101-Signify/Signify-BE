@@ -13,6 +13,7 @@ Database được chia thành các nhóm chức năng chính sau:
 3.  **Video Call**: Quản lý các cuộc gọi video và bản ghi phụ đề/transcript thời gian thực.
 4.  **Notification**: Hệ thống thông báo cho người dùng.
 5.  **Admin**: Nhật ký hoạt động quản trị (Audit Logs).
+6.  **Payment & Subscription**: Gói Signify Premium, đơn PayOS, giao dịch và lịch sử gia hạn.
 
 #### Sơ đồ quan hệ (Text-based)
 ```text
@@ -27,7 +28,18 @@ users
  ├── video_calls (caller/receiver)
  ├── call_transcripts (speaker)
  ├── notifications (1-N)
- └── admin_audit_logs (admin)
+ ├── admin_audit_logs (admin)
+ ├── user_subscriptions (1-N)
+ └── payment_orders (1-N)
+
+subscription_plans
+ ├── user_subscriptions (1-N)
+ └── payment_orders (1-N)
+
+payment_orders
+ ├── user_subscriptions (0-1, qua user_subscription_id duy nhất)
+ ├── payment_transactions (1-N)
+ └── payment_webhook_events (1-N)
 ```
 
 ---
@@ -184,6 +196,22 @@ users
 
 ---
 
+#### Payment & Subscription
+
+Các bảng sau được Liquibase v2.0 tạo theo thứ tự `subscription_plans` → `user_subscriptions` → `payment_orders` → `payment_transactions` → `payment_webhook_events`, sau đó seed đúng một gói `PREMIUM_MONTHLY` giá 49.000 VND/tháng.
+
+| Table | Cột/quan hệ quan trọng | Ràng buộc chính |
+| --- | --- | --- |
+| `subscription_plans` | `subscription_plan_id`, `plan_code`, `monthly_price_amount`, `currency_code`, `duration_months`, `is_active` | `plan_code` duy nhất |
+| `user_subscriptions` | `user_id` → `users.user_id`, `subscription_plan_id` → plan; `subscription_start_at`, `subscription_end_at`, `activated_at`, `subscription_status` | Index theo user/kỳ và user/status; mỗi kỳ đã trả tiền có một dòng riêng |
+| `payment_orders` | `user_id` → user, `subscription_plan_id` → plan, `user_subscription_id` → kỳ; `order_code`, `total_amount`, `order_status`, `checkout_url` | `order_code`, `user_subscription_id` và cặp provider/link duy nhất |
+| `payment_transactions` | `payment_order_id` → order; mã tham chiếu giao dịch, số tiền và trạng thái | Cặp provider/mã giao dịch duy nhất |
+| `payment_webhook_events` | `payment_order_id` → order; `provider_event_key`, `webhook_payload` kiểu `JSONB`, trạng thái xử lý | Cặp provider/khóa sự kiện duy nhất |
+
+Các thời điểm payment/subscription là `BIGINT` Unix epoch milliseconds. Không có khóa ngoại trực tiếp giữa subscription và `video_calls`: backend kiểm tra quyền của `caller_id` và `receiver_id` theo thời điểm gọi. `account.role` không quyết định quyền Premium. Gia hạn sớm nối từ ngày hết hạn cuối, gia hạn sau hết hạn bắt đầu lúc xác nhận; một đơn đã trả tiền chỉ gắn được với một kỳ. Xem [luồng payment](doc/payment-subscription.md).
+
+---
+
 #### TABLE: notifications
 **Mục đích**: Lưu các thông báo đẩy cho người dùng.
 **Các column quan trọng**:
@@ -245,8 +273,9 @@ Khi User B mở tin nhắn:
 2.  Khi muốn bỏ chặn (Unblock), cập nhật `deleted_at` của bản ghi đó.
 
 #### Flow 7: Video call
-1.  Tạo bản ghi trong `video_calls` khi bắt đầu gọi.
-2.  Trong quá trình gọi, mỗi khi AI dịch được 1 đoạn, insert vào `call_transcripts` với `call_id` tương ứng.
+1.  Kiểm tra cả caller và receiver có kỳ Signify Premium hợp lệ trước khi tạo hoặc nhận cuộc gọi.
+2.  Tạo bản ghi trong `video_calls` khi bắt đầu gọi.
+3.  Trong quá trình gọi, mỗi khi AI dịch được 1 đoạn, insert vào `call_transcripts` với `call_id` tương ứng.
 
 #### Flow 8: Admin ban user
 1.  Admin thực hiện Ban.
@@ -283,3 +312,8 @@ Các dữ liệu sau nên xử lý qua **WebSocket** và **Redis**:
 | **notifications** | Thông báo đẩy cho người dùng. |
 | **admin_audit_logs** | Nhật ký hành động của quản trị viên. |
 | **event_publication** | Lưu vết các sự kiện hệ thống (Outbox pattern). |
+| **subscription_plans** | Gói Premium và giá trong database. |
+| **user_subscriptions** | Lịch sử các kỳ Premium đã xác nhận thanh toán. |
+| **payment_orders** | Đơn PayOS và snapshot số tiền. |
+| **payment_transactions** | Giao dịch đã xác minh. |
+| **payment_webhook_events** | Khóa chống xử lý webhook trùng và trạng thái xử lý. |
