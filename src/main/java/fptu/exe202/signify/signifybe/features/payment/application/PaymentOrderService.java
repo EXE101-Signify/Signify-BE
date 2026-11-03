@@ -63,7 +63,7 @@ public class PaymentOrderService {
     @Transactional(readOnly = true)
     public List<PaymentOrderResponse> getUserPaymentOrders(CurrentUser authenticatedUser, int page, int size) {
         long userId = userId(authenticatedUser);
-        if (page < 0 || size < 1 || size > 100) throw new IllegalArgumentException("Invalid pagination");
+        if (page < 0 || size < 1 || size > 100) throw PaymentOrderException.invalidPagination();
         return orders.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
                 .stream().map(PaymentOrderResponse::from).toList();
     }

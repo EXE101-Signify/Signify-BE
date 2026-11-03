@@ -9,4 +9,5 @@ public final class PaymentOrderException extends BaseException {
     public static PaymentOrderException forbidden() { return new PaymentOrderException(HttpStatus.FORBIDDEN, "Payment order access denied"); }
     public static PaymentOrderException invalidTransition() { return new PaymentOrderException(HttpStatus.CONFLICT, "Invalid payment order state transition"); }
     public static PaymentOrderException invalidPlan() { return new PaymentOrderException(HttpStatus.CONFLICT, "Premium Monthly plan is unavailable or invalid"); }
+    public static PaymentOrderException invalidPagination() { return new PaymentOrderException(HttpStatus.BAD_REQUEST, "Invalid payment history pagination"); }
 }
