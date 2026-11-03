@@ -5,6 +5,8 @@ import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.Role;
 import fptu.exe202.signify.signifybe.features.call.application.VideoCallEvent;
 import fptu.exe202.signify.signifybe.features.call.application.VideoCallService;
+import fptu.exe202.signify.signifybe.features.call.application.CallExpiryService;
+import fptu.exe202.signify.signifybe.features.payment.application.SubscriptionService;
 import fptu.exe202.signify.signifybe.features.call.domain.VideoCall;
 import fptu.exe202.signify.signifybe.features.call.domain.VideoCallStatus;
 import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
@@ -39,7 +41,8 @@ class AiTextServiceTest {
         repository = mock(JpaVideoCallRepository.class);
         messaging = mock(SimpMessagingTemplate.class);
         var calls = new VideoCallService(repository, mock(PrivateChatAccessService.class),
-                Clock.systemUTC(), mock(ApplicationEventPublisher.class));
+                Clock.systemUTC(), mock(ApplicationEventPublisher.class),
+                mock(SubscriptionService.class), mock(CallExpiryService.class));
         text = new AiTextService(calls, messaging, Clock.fixed(Instant.ofEpochMilli(1234), ZoneOffset.UTC));
         call = new VideoCall(7, VIEWER.userId(), SIGNER.userId(), 100);
         call.accept(200);
