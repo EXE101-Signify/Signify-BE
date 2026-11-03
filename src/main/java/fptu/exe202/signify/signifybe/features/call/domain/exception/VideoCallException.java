@@ -25,4 +25,12 @@ public final class VideoCallException extends BaseException {
     public static VideoCallException notActive() {
         return new VideoCallException(HttpStatus.CONFLICT, "Call is not active");
     }
+
+    public static VideoCallException premiumRequired() {
+        return new VideoCallException(HttpStatus.FORBIDDEN, "Active Signify Premium is required for both call participants");
+    }
+
+    public static VideoCallException alreadyInCall() {
+        return new VideoCallException(HttpStatus.CONFLICT, "A participant already has an ongoing call");
+    }
 }

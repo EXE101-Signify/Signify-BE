@@ -7,11 +7,13 @@ import fptu.exe202.signify.signifybe.features.call.domain.VideoCallStatus;
 import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
 import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.JpaVideoCallRepository;
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
+import fptu.exe202.signify.signifybe.features.payment.application.SubscriptionService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.List;
 
 @Service
 public class VideoCallService {
@@ -19,19 +21,30 @@ public class VideoCallService {
     private final PrivateChatAccessService access;
     private final Clock clock;
     private final ApplicationEventPublisher events;
+    private final SubscriptionService subscriptions;
+    private final CallExpiryService expiry;
 
     public VideoCallService(JpaVideoCallRepository calls, PrivateChatAccessService access, Clock clock,
-                            ApplicationEventPublisher events) {
+                            ApplicationEventPublisher events, SubscriptionService subscriptions,
+                            CallExpiryService expiry) {
         this.calls = calls;
         this.access = access;
         this.clock = clock;
         this.events = events;
+        this.subscriptions = subscriptions;
+        this.expiry = expiry;
     }
 
     @Transactional
     public VideoCall create(long conversationId, CurrentUser actor) {
         long callerId = userId(actor);
         long receiverId = access.unblockedPeer(conversationId, callerId);
+        calls.lockParticipant(Math.min(callerId, receiverId));
+        calls.lockParticipant(Math.max(callerId, receiverId));
+        requirePremium(callerId, receiverId);
+        List<VideoCallStatus> ongoing = List.of(VideoCallStatus.CALLING, VideoCallStatus.ACCEPTED);
+        if (calls.hasOngoingCall(callerId, ongoing) || calls.hasOngoingCall(receiverId, ongoing))
+            throw VideoCallException.alreadyInCall();
         VideoCall call = calls.save(new VideoCall(conversationId, callerId, receiverId, clock.millis()));
         events.publishEvent(VideoCallEvent.incoming(call, call.getCreatedAt()));
         return call;
@@ -41,6 +54,7 @@ public class VideoCallService {
     public VideoCall accept(long callId, CurrentUser actor) {
         VideoCall call = lockedParticipantCall(callId, actor);
         requireReceiver(call, actor.userId());
+        requirePremium(call.getCallerId(), call.getReceiverId());
         long now = clock.millis();
         call.accept(now);
         events.publishEvent(VideoCallEvent.statusChanged(call, now));
@@ -89,6 +103,7 @@ public class VideoCallService {
         VideoCall call = calls.findById(callId).orElseThrow(VideoCallException::notFound);
         requireParticipant(call, authenticatedUserId);
         if (call.getStatus() != VideoCallStatus.ACCEPTED) throw VideoCallException.notActive();
+        if (expiry.closeIfExpired(callId)) throw VideoCallException.premiumRequired();
         return call;
     }
 
@@ -112,5 +127,10 @@ public class VideoCallService {
 
     private static void requireReceiver(VideoCall call, long userId) {
         if (call.getReceiverId() != userId) throw VideoCallException.forbidden();
+    }
+
+    private void requirePremium(long callerId, long receiverId) {
+        if (!subscriptions.hasActiveSubscription(callerId)
+                || !subscriptions.hasActiveSubscription(receiverId)) throw VideoCallException.premiumRequired();
     }
 }
