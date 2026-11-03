@@ -22,6 +22,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,8 +42,9 @@ class SubscriptionServiceTest {
     @Test
     void reportsValidSubscriptionAndExpirationFromActiveLookup() {
         UserSubscription active = mock(UserSubscription.class);
-        when(active.getSubscriptionEndAt()).thenReturn(NOW + 10_000);
         when(subscriptions.findActiveSubscription(7, NOW)).thenReturn(Optional.of(active));
+        when(subscriptions.findLatestEntitlementEnd(eq(7L), any(), eq(NOW)))
+                .thenReturn(Optional.of(NOW + 10_000));
 
         assertTrue(service.hasActiveSubscription(7));
         assertSame(active, service.getCurrentSubscription(7).orElseThrow());
@@ -52,6 +54,7 @@ class SubscriptionServiceTest {
     @Test
     void reportsNoActiveSubscriptionWhenRepositoryHasNoValidPeriod() {
         when(subscriptions.findActiveSubscription(7, NOW)).thenReturn(Optional.empty());
+        when(subscriptions.findLatestEntitlementEnd(eq(7L), any(), eq(NOW))).thenReturn(Optional.empty());
 
         assertFalse(service.hasActiveSubscription(7));
         assertTrue(service.getSubscriptionExpiration(7).isEmpty());
@@ -68,6 +71,29 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void handlesLeapYearAndEndOfMonthInBusinessTimezone() {
+        long january31 = ZonedDateTime.of(2024, 1, 31, 19, 0, 0, 0,
+                SubscriptionService.BUSINESS_ZONE).toInstant().toEpochMilli();
+        long february29 = ZonedDateTime.of(2024, 2, 29, 19, 0, 0, 0,
+                SubscriptionService.BUSINESS_ZONE).toInstant().toEpochMilli();
+        long march29 = ZonedDateTime.of(2024, 3, 29, 19, 0, 0, 0,
+                SubscriptionService.BUSINESS_ZONE).toInstant().toEpochMilli();
+
+        assertEquals(february29, service.calculateNextSubscriptionPeriod(null, january31, 1).expiresAt());
+        assertEquals(march29, service.calculateNextSubscriptionPeriod(february29, january31, 1).expiresAt());
+    }
+
+    @Test
+    void scheduledRenewalDoesNotGrantAccessBeforeStart() {
+        when(subscriptions.findActiveSubscription(7, NOW)).thenReturn(Optional.empty());
+        when(subscriptions.findLatestEntitlementEnd(eq(7L), any(), eq(NOW)))
+                .thenReturn(Optional.of(NOW + 86_400_000L));
+
+        assertFalse(service.hasActiveSubscription(7));
+        assertEquals(NOW + 86_400_000L, service.getSubscriptionExpiration(7).orElseThrow());
+    }
+
+    @Test
     void earlyRenewalStartsAtExistingExpirationAndExtendsItOneMonth() {
         long oldExpiration = Instant.parse("2025-02-20T04:00:00Z").toEpochMilli();
         preparePaidOrder(100, oldExpiration);
@@ -75,9 +101,36 @@ class SubscriptionServiceTest {
         UserSubscription created = service.activateSubscriptionAfterPayment(100);
 
         assertEquals(oldExpiration, created.getSubscriptionStartAt());
+        assertEquals(SubscriptionStatus.PENDING.getValue(), created.getStatus());
         assertEquals(service.calculateNextSubscriptionPeriod(oldExpiration, NOW, 1).expiresAt(),
                 created.getSubscriptionEndAt());
         verify(order).assignUserSubscription(created);
+    }
+
+    @Test
+    void secondEarlyRenewalAppendsAfterAlreadyScheduledPeriod() {
+        long firstEnd = Instant.parse("2025-02-20T04:00:00Z").toEpochMilli();
+        long scheduledEnd = Instant.parse("2025-03-20T04:00:00Z").toEpochMilli();
+        preparePaidOrder(104, firstEnd);
+        UserSubscription scheduled = mock(UserSubscription.class);
+        when(scheduled.getSubscriptionEndAt()).thenReturn(scheduledEnd);
+        UserSubscription original = mock(UserSubscription.class);
+        when(original.getSubscriptionEndAt()).thenReturn(firstEnd);
+        when(subscriptions.findLockedRenewalPeriods(eq(7L), any(), eq(NOW)))
+                .thenReturn(List.of(scheduled, original));
+
+        UserSubscription created = service.activateSubscriptionAfterPayment(104);
+
+        assertEquals(scheduledEnd, created.getSubscriptionStartAt());
+        assertEquals(SubscriptionStatus.PENDING.getValue(), created.getStatus());
+    }
+
+    @Test
+    void reconciliationExpiresOldPeriodsAndStartsDuePendingPeriods() {
+        service.reconcileStatuses();
+        verify(subscriptions).expireEndedPeriods(any(), eq(SubscriptionStatus.EXPIRED.getValue()), eq(NOW));
+        verify(subscriptions).activateStartedPeriods(eq(SubscriptionStatus.PENDING.getValue()),
+                eq(SubscriptionStatus.ACTIVE.getValue()), eq(NOW));
     }
 
     @Test
@@ -88,6 +141,7 @@ class SubscriptionServiceTest {
         UserSubscription created = service.activateSubscriptionAfterPayment(101);
 
         assertEquals(NOW, created.getSubscriptionStartAt());
+        assertEquals(SubscriptionStatus.ACTIVE.getValue(), created.getStatus());
         assertEquals(service.calculateNextSubscriptionPeriod(null, NOW, 1).expiresAt(),
                 created.getSubscriptionEndAt());
     }
@@ -126,9 +180,9 @@ class SubscriptionServiceTest {
         when(plan.getMonthlyPriceAmount()).thenReturn(49_000L);
         when(plan.getCurrencyCode()).thenReturn("VND");
         when(plan.getDurationMonths()).thenReturn(1);
-        when(subscriptions.findLockedByUserIdAndStatusOrderBySubscriptionEndAtDesc(7, SubscriptionStatus.ACTIVE.getValue()))
+        lenient().when(subscriptions.findLockedRenewalPeriods(eq(7L), any(), eq(NOW)))
                 .thenReturn(List.of(prior));
-        when(prior.getSubscriptionEndAt()).thenReturn(priorExpiration);
+        lenient().when(prior.getSubscriptionEndAt()).thenReturn(priorExpiration);
         when(subscriptions.save(any(UserSubscription.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 }

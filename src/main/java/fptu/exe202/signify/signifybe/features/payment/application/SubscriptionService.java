@@ -8,6 +8,7 @@ import fptu.exe202.signify.signifybe.features.payment.domain.UserSubscription;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.JpaPaymentOrderRepository;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.JpaUserSubscriptionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -43,7 +44,8 @@ public class SubscriptionService {
 
     @Transactional(readOnly = true)
     public Optional<Long> getSubscriptionExpiration(long userId) {
-        return getCurrentSubscription(userId).map(UserSubscription::getSubscriptionEndAt);
+        return subscriptions.findLatestEntitlementEnd(userId, List.of(SubscriptionStatus.ACTIVE.getValue(),
+                SubscriptionStatus.PENDING.getValue()), clock.millis());
     }
 
     /** Called only by the trusted payment confirmation application flow, with a persisted order code. */
@@ -63,12 +65,13 @@ public class SubscriptionService {
         if (!plan.isActive() || order.getTotalAmount() == null
                 || !order.getTotalAmount().equals(plan.getMonthlyPriceAmount())
                 || !"VND".equals(plan.getCurrencyCode()) || plan.getDurationMonths() == null
-                || plan.getDurationMonths() < 1) {
+                || plan.getDurationMonths() != 1) {
             throw new IllegalStateException("Paid order does not match the active subscription plan");
         }
 
         Optional<Long> latestUnexpiredEnd = subscriptions
-                .findLockedByUserIdAndStatusOrderBySubscriptionEndAtDesc(userId, SubscriptionStatus.ACTIVE.getValue())
+                .findLockedRenewalPeriods(userId, List.of(SubscriptionStatus.ACTIVE.getValue(),
+                        SubscriptionStatus.PENDING.getValue()), confirmedAt)
                 .stream()
                 .map(UserSubscription::getSubscriptionEndAt)
                 .filter(end -> end != null && end > confirmedAt)
@@ -76,7 +79,9 @@ public class SubscriptionService {
         SubscriptionPeriod period = calculateNextSubscriptionPeriod(
                 latestUnexpiredEnd.orElse(null),
                 confirmedAt, plan.getDurationMonths());
-        UserSubscription subscription = new UserSubscription(userId, plan, SubscriptionStatus.ACTIVE.getValue(),
+        String status = period.startsAt() > clock.millis()
+                ? SubscriptionStatus.PENDING.getValue() : SubscriptionStatus.ACTIVE.getValue();
+        UserSubscription subscription = new UserSubscription(userId, plan, status,
                 order.getTotalAmount(), period.startsAt(), period.expiresAt(), confirmedAt, clock.millis());
         subscription = subscriptions.save(subscription);
         order.assignUserSubscription(subscription);
@@ -97,5 +102,15 @@ public class SubscriptionService {
     @Transactional(readOnly = true)
     public List<UserSubscription> getSubscriptionHistory(long userId) {
         return subscriptions.findByUserIdOrderBySubscriptionStartAtDesc(userId);
+    }
+
+    @Scheduled(fixedDelayString = "${subscription.reconcile-delay-ms:300000}")
+    @Transactional
+    public void reconcileStatuses() {
+        long now = clock.millis();
+        subscriptions.expireEndedPeriods(List.of(SubscriptionStatus.ACTIVE.getValue(),
+                SubscriptionStatus.PENDING.getValue()), SubscriptionStatus.EXPIRED.getValue(), now);
+        subscriptions.activateStartedPeriods(SubscriptionStatus.PENDING.getValue(),
+                SubscriptionStatus.ACTIVE.getValue(), now);
     }
 }

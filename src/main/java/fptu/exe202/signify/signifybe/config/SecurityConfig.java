@@ -51,6 +51,7 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, PUBLIC_ACCOUNT_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payment/payos/webhook").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                         // Browser WebSocket clients send their bearer token in STOMP CONNECT.

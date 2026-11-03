@@ -47,6 +47,6 @@ public class PaymentWebhookEvent {
     @Column(name = "processed_at")
     private Long processedAt;
 
-    protected PaymentWebhookEvent() { }
+    public PaymentWebhookEvent() { }
 
 }
