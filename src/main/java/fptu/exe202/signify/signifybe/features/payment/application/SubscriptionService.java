@@ -7,6 +7,9 @@ import fptu.exe202.signify.signifybe.features.payment.domain.SubscriptionStatus;
 import fptu.exe202.signify.signifybe.features.payment.domain.UserSubscription;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.JpaPaymentOrderRepository;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.JpaUserSubscriptionRepository;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,18 +22,16 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SubscriptionService {
-    public static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private final JpaUserSubscriptionRepository subscriptions;
-    private final JpaPaymentOrderRepository orders;
-    private final Clock clock;
+    public static ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    public SubscriptionService(JpaUserSubscriptionRepository subscriptions,
-                               JpaPaymentOrderRepository orders, Clock clock) {
-        this.subscriptions = subscriptions;
-        this.orders = orders;
-        this.clock = clock;
-    }
+    JpaUserSubscriptionRepository subscriptions;
+
+    JpaPaymentOrderRepository orders;
+
+    Clock clock;
 
     @Transactional(readOnly = true)
     public Optional<UserSubscription> getCurrentSubscription(long userId) {

@@ -7,6 +7,9 @@ import fptu.exe202.signify.signifybe.features.payment.application.PaymentLinkSer
 import fptu.exe202.signify.signifybe.features.payment.application.PaymentOrderService;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,14 +25,13 @@ import java.util.List;
 @Validated
 @RestController
 @RequestMapping("/api/payments")
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaymentController {
-    private final PaymentOrderService orders;
-    private final PaymentLinkService links;
 
-    public PaymentController(PaymentOrderService orders, PaymentLinkService links) {
-        this.orders = orders;
-        this.links = links;
-    }
+    PaymentOrderService orders;
+
+    PaymentLinkService links;
 
     @PostMapping("/orders")
     public ResponseEntity<ApiResponse<PaymentOrderView>> create(@AuthenticationPrincipal CurrentUser user) {

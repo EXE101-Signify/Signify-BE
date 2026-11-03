@@ -1,6 +1,9 @@
 package fptu.exe202.signify.signifybe.features.payment.infrastructure;
 
 import fptu.exe202.signify.signifybe.features.payment.application.*;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Component;
 import vn.payos.PayOS;
 import vn.payos.exception.PayOSException;
@@ -8,9 +11,10 @@ import vn.payos.model.webhooks.WebhookData;
 import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PayOSWebhookVerifier implements PaymentWebhookVerifier {
-    private final PayOS payOS;
-    public PayOSWebhookVerifier(PayOS payOS) { this.payOS = payOS; }
+    PayOS payOS;
 
     @Override public VerifiedPayOSWebhook verify(Map<String, Object> payload) {
         if (payload == null || !(payload.get("signature") instanceof String signature) || signature.isBlank()

@@ -2,6 +2,9 @@ package fptu.exe202.signify.signifybe.features.payment.application;
 
 import fptu.exe202.signify.signifybe.features.payment.domain.*;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.*;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
@@ -13,25 +16,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 class PaymentWebhookProcessor {
-    private static final String PROVIDER = "PAYOS";
-    private final JpaPaymentOrderRepository orders;
-    private final JpaPaymentTransactionRepository transactions;
-    private final JpaPaymentWebhookEventRepository events;
-    private final SubscriptionService subscriptions;
-    private final PaymentGateway gateway;
-    private final Clock clock;
+    static String PROVIDER = "PAYOS";
 
-    public PaymentWebhookProcessor(JpaPaymentOrderRepository orders, JpaPaymentTransactionRepository transactions,
-                                   JpaPaymentWebhookEventRepository events, SubscriptionService subscriptions,
-                                   PaymentGateway gateway, Clock clock) {
-        this.orders = orders;
-        this.transactions = transactions;
-        this.events = events;
-        this.subscriptions = subscriptions;
-        this.gateway = gateway;
-        this.clock = clock;
-    }
+    JpaPaymentOrderRepository orders;
+
+    JpaPaymentTransactionRepository transactions;
+
+    JpaPaymentWebhookEventRepository events;
+
+    SubscriptionService subscriptions;
+
+    PaymentGateway gateway;
+
+    Clock clock;
 
     @Transactional
     public void process(VerifiedPayOSWebhook data) {
