@@ -247,7 +247,7 @@ Chi tiết nghiệp vụ, ví dụ JSON và checklist xem [payment-subscription.
 
 `POST /api/payments/orders` trả các trường `paymentOrderId`, `orderCode`, `totalAmount`, `currencyCode`, `orderStatus`, `planCode`, `orderType`, `checkoutUrl`, `orderExpiresAt`, `paidAt`, `createdAt`. Điều hướng tới `checkoutUrl`, rồi sau khi PayOS chuyển về `returnUrl` hãy đọc lại đơn và `/api/subscription/me`. **Không** cấp Premium dựa vào URL redirect; chỉ backend xử lý webhook PayOS đã xác minh mới kích hoạt kỳ. `checkoutUrl` có thể `null` ở endpoint đọc nếu link chưa được lưu. Các thời điểm là epoch milliseconds. Trạng thái `PENDING` của kỳ gia hạn tương lai không có nghĩa Premium đã có hiệu lực; dùng `isPremiumActive` để điều khiển UI gọi video hiện tại.
 
-`POST /api/payment/payos/webhook` dành riêng cho PayOS; frontend không gọi và không gửi kết quả thanh toán tự khai báo.
+`POST /api/payments/webhooks/payos` dành riêng cho PayOS; frontend không gọi và không gửi kết quả thanh toán tự khai báo.
 
 ## Storage image
 

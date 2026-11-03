@@ -6,7 +6,7 @@ Tài liệu này mô tả mã backend hiện tại. Gói trả phí duy nhất l
 
 1. Người dùng đã đăng nhập gọi `POST /api/payments/orders` với **body rỗng**. Backend lấy `userId` từ security context, lấy giá/gói đang hoạt động trong database và tạo hoặc dùng lại đơn `PENDING` của người dùng. Không có trường giá hay `userId` do client gửi.
 2. Backend tạo link bằng PayOS SDK và trả `checkoutUrl`. Frontend chuyển người dùng đến URL này. `returnUrl` và `cancelUrl` chỉ phục vụ điều hướng; chúng **không xác nhận thanh toán**.
-3. PayOS gọi `POST /api/payment/payos/webhook`. Endpoint public để PayOS truy cập, nhưng backend kiểm tra chữ ký bằng SDK, cấu trúc sự kiện, `orderCode`, VND, số tiền và trạng thái `PAID` từ API PayOS.
+3. PayOS gọi `POST /api/payments/webhooks/payos`. Endpoint public để PayOS truy cập, nhưng backend kiểm tra chữ ký bằng SDK, cấu trúc sự kiện, `orderCode`, VND, số tiền và trạng thái `PAID` từ API PayOS.
 4. Trong một database transaction, backend khóa đơn, kiểm tra khóa sự kiện và mã giao dịch đã xử lý, lưu giao dịch, chuyển đơn sang `PAID` và tạo một kỳ thuê bao gắn với đơn. Webhook lặp lại không tạo thêm kỳ.
 5. Frontend gọi `GET /api/payments/orders/{paymentOrderId}` và `GET /api/subscription/me` sau khi trở về từ PayOS. Chỉ coi thanh toán thành công khi **backend** báo đơn `PAID` và quyền Premium đang có hiệu lực.
 
@@ -22,7 +22,7 @@ Các API trả dữ liệu trong `ApiResponse` dùng chung, trừ webhook trả 
 | POST | `/api/payments/orders` | Tạo/dùng lại đơn và checkout link; không có request body |
 | GET | `/api/payments/orders/{paymentOrderId}` | Đơn của chính người dùng |
 | GET | `/api/payments/history?page=0&size=20` | Danh sách đơn của chính người dùng, tối đa 100 mục/trang |
-| POST | `/api/payment/payos/webhook` | PayOS gọi; chữ ký bắt buộc |
+| POST | `/api/payments/webhooks/payos` | PayOS gọi; chữ ký bắt buộc |
 
 Ví dụ `data` của `POST /api/payments/orders`:
 
@@ -69,7 +69,7 @@ Cả caller và receiver cần Premium hợp lệ khi tạo/nhận cuộc gọi.
 
 Liquibase master nạp v2.0 theo thứ tự: `subscription_plans`, `user_subscriptions`, `payment_orders`, `payment_transactions`, `payment_webhook_events`, rồi seed gói Premium. Khóa ngoại đến `users.user_id`, gói, đơn và kỳ thuê bao. `payment_orders.user_subscription_id` là duy nhất; `order_code`, mã giao dịch PayOS và khóa webhook cũng có unique constraint. Thời gian lưu dạng `BIGINT` epoch milliseconds; webhook payload an toàn được lưu ở `JSONB`. Hibernate dùng `ddl-auto: validate`, không tạo schema.
 
-Biến bắt buộc cho PayOS: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PAYOS_RETURN_URL`, `PAYOS_CANCEL_URL`, `PAYOS_WEBHOOK_URL`. Cấu hình `PAYOS_WEBHOOK_URL` được validate khi khởi động nhưng **không tự đăng ký** với PayOS. Đăng ký URL HTTPS public trỏ đúng `/api/payment/payos/webhook` trên kênh PayOS; giữ các khóa trong Dokploy secrets/environment, không commit hoặc ghi log. Xem [README](../README.md) để biết các biến DB, Redis và deploy.
+Biến bắt buộc cho PayOS: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`, `PAYOS_RETURN_URL`, `PAYOS_CANCEL_URL`, `PAYOS_WEBHOOK_URL`. Cấu hình `PAYOS_WEBHOOK_URL` được validate khi khởi động nhưng **không tự đăng ký** với PayOS. Đăng ký URL HTTPS public trỏ đúng `/api/payments/webhooks/payos` trên kênh PayOS; giữ các khóa trong Dokploy secrets/environment, không commit hoặc ghi log. Xem [README](../README.md) để biết các biến DB, Redis và deploy.
 
 ## Kiểm thử trước production và giới hạn hiện tại
 

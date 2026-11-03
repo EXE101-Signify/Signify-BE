@@ -17,7 +17,7 @@ public class PayOSWebhookController {
 
     PaymentWebhookService service;
 
-    @PostMapping("/api/payment/payos/webhook")
+    @PostMapping("/api/payments/webhooks/payos")
     public ResponseEntity<Map<String, Object>> receive(@RequestBody Map<String, Object> payload) {
         service.handle(payload);
         return ResponseEntity.ok(Map.of("success", true));
