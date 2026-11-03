@@ -35,13 +35,12 @@ class PaymentWebhookProcessor {
 
     @Transactional
     public void process(VerifiedPayOSWebhook data) {
-        PaymentOrder order = orders.findLockedByOrderCode(data.orderCode())
-                .orElseThrow(PaymentOrderException::notFound);
-        if (!PROVIDER.equals(order.getPaymentProvider()) || !"VND".equals(data.currency())
+        PaymentOrder order = orders.findLockedByOrderCode(data.orderCode()).orElse(null);
+        if (order != null && (!PROVIDER.equals(order.getPaymentProvider()) || !"VND".equals(data.currency())
                 || !order.getCurrencyCode().equals(data.currency()) || order.getOrderCode() != data.orderCode()
                 || order.getTotalAmount() != data.amount()
                 || (order.getProviderPaymentLinkId() != null
-                    && !order.getProviderPaymentLinkId().equals(data.paymentLinkId())))
+                    && !order.getProviderPaymentLinkId().equals(data.paymentLinkId()))))
             throw PaymentWebhookException.mismatch();
 
         String key = eventKey(data);
@@ -63,6 +62,14 @@ class PaymentWebhookProcessor {
         safePayload.put("reference", data.reference());
         safePayload.put("paymentLinkId", data.paymentLinkId());
         event.setWebhookPayload(safePayload);
+
+        if (order == null) {
+            event.setProcessingStatus(WebhookProcessingStatus.IGNORED.getValue());
+            event.setProcessingErrorMessage("Unknown payment order");
+            event.setProcessedAt(now);
+            events.save(event);
+            return;
+        }
 
         boolean success = data.envelopeSuccess() && "00".equals(data.envelopeCode())
                 && "00".equals(data.dataCode());

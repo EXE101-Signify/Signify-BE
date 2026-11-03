@@ -8,6 +8,7 @@ Tài liệu này mô tả mã backend hiện tại. Gói trả phí duy nhất l
 2. Backend tạo link bằng PayOS SDK và trả `checkoutUrl`. Frontend chuyển người dùng đến URL này. `returnUrl` và `cancelUrl` chỉ phục vụ điều hướng; chúng **không xác nhận thanh toán**.
 3. PayOS gọi `POST /api/payments/webhooks/payos`. Endpoint public để PayOS truy cập, nhưng backend kiểm tra chữ ký bằng SDK, cấu trúc sự kiện, `orderCode`, VND, số tiền và trạng thái `PAID` từ API PayOS.
 4. Trong một database transaction, backend khóa đơn, kiểm tra khóa sự kiện và mã giao dịch đã xử lý, lưu giao dịch, chuyển đơn sang `PAID` và tạo một kỳ thuê bao gắn với đơn. Webhook lặp lại không tạo thêm kỳ.
+   Webhook mẫu đã xác minh chữ ký nhưng không có đơn nội bộ được lưu vào `payment_webhook_events` với trạng thái `IGNORED` và nhận HTTP 200; không tạo đơn, giao dịch hay quyền Premium. Chữ ký sai vẫn bị từ chối, còn lỗi database được trả lỗi để PayOS có thể gửi lại.
 5. Frontend gọi `GET /api/payments/orders/{paymentOrderId}` và `GET /api/subscription/me` sau khi trở về từ PayOS. Chỉ coi thanh toán thành công khi **backend** báo đơn `PAID` và quyền Premium đang có hiệu lực.
 
 ## REST API

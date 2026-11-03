@@ -95,8 +95,24 @@ class PaymentWebhookProcessorTest {
 
     @Test void unknownOrderCannotActivate() {
         when(orders.findLockedByOrderCode(123)).thenReturn(Optional.empty());
-        assertThrows(PaymentOrderException.class, () -> processor.process(success));
-        verifyNoInteractions(subscriptions, transactions);
+        processor.process(success);
+
+        verify(events).save(argThat(e -> e.getOrder() == null
+                && e.isSignatureValid()
+                && "IGNORED".equals(e.getProcessingStatus())
+                && "Unknown payment order".equals(e.getProcessingErrorMessage())
+                && Long.valueOf(123L).equals(e.getWebhookPayload().get("orderCode"))));
+        verify(orders, never()).save(any());
+        verifyNoInteractions(subscriptions, transactions, gateway);
+        assertEquals("PENDING", order.getStatus());
+    }
+
+    @Test void unknownOrderDatabaseFailureMustBeRetried() {
+        when(orders.findLockedByOrderCode(123L)).thenReturn(Optional.empty());
+        when(events.save(any(PaymentWebhookEvent.class))).thenThrow(new IllegalStateException("database unavailable"));
+
+        assertThrows(IllegalStateException.class, () -> processor.process(success));
+        verifyNoInteractions(subscriptions, transactions, gateway);
     }
 
     @Test void duplicateEventDoesNotActivate() {

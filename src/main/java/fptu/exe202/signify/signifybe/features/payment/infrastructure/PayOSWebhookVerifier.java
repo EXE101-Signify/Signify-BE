@@ -18,11 +18,16 @@ public class PayOSWebhookVerifier implements PaymentWebhookVerifier {
 
     @Override public VerifiedPayOSWebhook verify(Map<String, Object> payload) {
         if (payload == null || !(payload.get("signature") instanceof String signature) || signature.isBlank()
-                || !(payload.get("data") instanceof Map<?, ?>)) throw PaymentWebhookException.invalid();
+                || !(payload.get("data") instanceof Map<?, ?>)
+                || !(payload.get("code") instanceof String envelopeCode) || envelopeCode.isBlank()
+                || !(payload.get("success") instanceof Boolean)) throw PaymentWebhookException.invalid();
         try {
             WebhookData data = payOS.webhooks().verify(payload);
             if (data == null || data.getOrderCode() == null || data.getAmount() == null
-                    || data.getOrderCode() <= 0 || data.getAmount() <= 0) throw PaymentWebhookException.invalid();
+                    || data.getOrderCode() <= 0 || data.getAmount() <= 0
+                    || data.getCurrency() == null || data.getCurrency().isBlank()
+                    || data.getPaymentLinkId() == null || data.getPaymentLinkId().isBlank()
+                    || data.getCode() == null || data.getCode().isBlank()) throw PaymentWebhookException.invalid();
             return new VerifiedPayOSWebhook(data.getOrderCode(), data.getAmount(), data.getCurrency(),
                     data.getReference(), data.getPaymentLinkId(), data.getCode(), data.getTransactionDateTime(),
                     payload.get("code") instanceof String code ? code : null,
