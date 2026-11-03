@@ -1,0 +1,71 @@
+databaseChangeLog:
+- changeSet:
+    id: payment-subscription_plans
+    author: signify
+    changes:
+    - createTable:
+        tableName: subscription_plans
+        columns:
+        - column:
+            name: subscription_plan_id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: plan_code
+            type: VARCHAR(50)
+            constraints:
+              nullable: false
+        - column:
+            name: plan_name
+            type: VARCHAR(100)
+            constraints:
+              nullable: false
+        - column:
+            name: plan_description
+            type: TEXT
+        - column:
+            name: monthly_price_amount
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: currency_code
+            type: VARCHAR(3)
+            defaultValue: VND
+            constraints:
+              nullable: false
+        - column:
+            name: duration_months
+            type: INTEGER
+            defaultValue: 1
+            constraints:
+              nullable: false
+        - column:
+            name: unlimited_video_calls
+            type: BOOLEAN
+            defaultValue: true
+            constraints:
+              nullable: false
+        - column:
+            name: is_active
+            type: BOOLEAN
+            defaultValue: true
+            constraints:
+              nullable: false
+        - column:
+            name: created_at
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: updated_at
+            type: BIGINT
+            constraints:
+              nullable: false
+    - addUniqueConstraint:
+        tableName: subscription_plans
+        constraintName: uq_subscription_plans_code
+        columnNames: plan_code

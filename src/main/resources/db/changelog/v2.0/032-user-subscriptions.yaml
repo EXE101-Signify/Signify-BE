@@ -1,0 +1,90 @@
+databaseChangeLog:
+- changeSet:
+    id: payment-user_subscriptions
+    author: signify
+    changes:
+    - createTable:
+        tableName: user_subscriptions
+        columns:
+        - column:
+            name: user_subscription_id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: user_id
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: subscription_plan_id
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: subscription_status
+            type: VARCHAR(30)
+            constraints:
+              nullable: false
+        - column:
+            name: subscription_price_amount
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: subscription_start_at
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: subscription_end_at
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: activated_at
+            type: BIGINT
+        - column:
+            name: created_at
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: updated_at
+            type: BIGINT
+            constraints:
+              nullable: false
+    - addForeignKeyConstraint:
+        constraintName: fk_user_subscriptions_user
+        baseTableName: user_subscriptions
+        baseColumnNames: user_id
+        referencedTableName: users
+        referencedColumnNames: user_id
+        onDelete: RESTRICT
+    - addForeignKeyConstraint:
+        constraintName: fk_user_subscriptions_plan
+        baseTableName: user_subscriptions
+        baseColumnNames: subscription_plan_id
+        referencedTableName: subscription_plans
+        referencedColumnNames: subscription_plan_id
+        onDelete: RESTRICT
+    - createIndex:
+        tableName: user_subscriptions
+        indexName: idx_user_subscriptions_user_period
+        columns:
+        - column:
+            name: user_id
+        - column:
+            name: subscription_start_at
+        - column:
+            name: subscription_end_at
+    - createIndex:
+        tableName: user_subscriptions
+        indexName: idx_user_subscriptions_user_status
+        columns:
+        - column:
+            name: user_id
+        - column:
+            name: subscription_status

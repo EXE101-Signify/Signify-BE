@@ -1,0 +1,38 @@
+databaseChangeLog:
+- changeSet:
+    id: payment-seed-premium-monthly
+    author: signify
+    changes:
+    - insert:
+        tableName: subscription_plans
+        columns:
+        - column:
+            name: plan_code
+            value: PREMIUM_MONTHLY
+        - column:
+            name: plan_name
+            value: Signify Premium
+        - column:
+            name: plan_description
+            value: Unlimited sign language video calls for one month
+        - column:
+            name: monthly_price_amount
+            valueNumeric: 49000
+        - column:
+            name: currency_code
+            value: VND
+        - column:
+            name: duration_months
+            valueNumeric: 1
+        - column:
+            name: unlimited_video_calls
+            valueBoolean: true
+        - column:
+            name: is_active
+            valueBoolean: true
+        - column:
+            name: created_at
+            valueComputed: CAST(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000 AS BIGINT)
+        - column:
+            name: updated_at
+            valueComputed: CAST(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000 AS BIGINT)

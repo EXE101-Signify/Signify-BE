@@ -1,0 +1,77 @@
+databaseChangeLog:
+- changeSet:
+    id: payment-payment_webhook_events
+    author: signify
+    changes:
+    - createTable:
+        tableName: payment_webhook_events
+        columns:
+        - column:
+            name: payment_webhook_event_id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: payment_provider
+            type: VARCHAR(30)
+            constraints:
+              nullable: false
+        - column:
+            name: provider_event_key
+            type: VARCHAR(255)
+        - column:
+            name: payment_order_id
+            type: BIGINT
+        - column:
+            name: webhook_payload
+            type: JSONB
+            constraints:
+              nullable: false
+        - column:
+            name: signature_valid
+            type: BOOLEAN
+            constraints:
+              nullable: false
+        - column:
+            name: processing_status
+            type: VARCHAR(30)
+            constraints:
+              nullable: false
+        - column:
+            name: processing_error_message
+            type: TEXT
+        - column:
+            name: received_at
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: processed_at
+            type: BIGINT
+    - addForeignKeyConstraint:
+        constraintName: fk_payment_webhook_events_order
+        baseTableName: payment_webhook_events
+        baseColumnNames: payment_order_id
+        referencedTableName: payment_orders
+        referencedColumnNames: payment_order_id
+        onDelete: RESTRICT
+    - addUniqueConstraint:
+        tableName: payment_webhook_events
+        constraintName: uq_payment_webhook_provider_event
+        columnNames: payment_provider, provider_event_key
+    - createIndex:
+        tableName: payment_webhook_events
+        indexName: idx_payment_webhook_events_order
+        columns:
+        - column:
+            name: payment_order_id
+    - createIndex:
+        tableName: payment_webhook_events
+        indexName: idx_payment_webhook_events_status
+        columns:
+        - column:
+            name: processing_status
+        - column:
+            name: received_at

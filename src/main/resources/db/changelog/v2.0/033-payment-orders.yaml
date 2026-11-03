@@ -1,0 +1,131 @@
+databaseChangeLog:
+- changeSet:
+    id: payment-payment_orders
+    author: signify
+    changes:
+    - createTable:
+        tableName: payment_orders
+        columns:
+        - column:
+            name: payment_order_id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: order_code
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: user_id
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: subscription_plan_id
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: user_subscription_id
+            type: BIGINT
+        - column:
+            name: order_type
+            type: VARCHAR(30)
+            constraints:
+              nullable: false
+        - column:
+            name: order_status
+            type: VARCHAR(30)
+            constraints:
+              nullable: false
+        - column:
+            name: total_amount
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: currency_code
+            type: VARCHAR(3)
+            defaultValue: VND
+            constraints:
+              nullable: false
+        - column:
+            name: payment_provider
+            type: VARCHAR(30)
+            defaultValue: PAYOS
+            constraints:
+              nullable: false
+        - column:
+            name: provider_payment_link_id
+            type: VARCHAR(255)
+        - column:
+            name: checkout_url
+            type: TEXT
+        - column:
+            name: order_expires_at
+            type: BIGINT
+        - column:
+            name: paid_at
+            type: BIGINT
+        - column:
+            name: created_at
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: updated_at
+            type: BIGINT
+            constraints:
+              nullable: false
+    - addForeignKeyConstraint:
+        constraintName: fk_payment_orders_user
+        baseTableName: payment_orders
+        baseColumnNames: user_id
+        referencedTableName: users
+        referencedColumnNames: user_id
+        onDelete: RESTRICT
+    - addForeignKeyConstraint:
+        constraintName: fk_payment_orders_plan
+        baseTableName: payment_orders
+        baseColumnNames: subscription_plan_id
+        referencedTableName: subscription_plans
+        referencedColumnNames: subscription_plan_id
+        onDelete: RESTRICT
+    - addForeignKeyConstraint:
+        constraintName: fk_payment_orders_subscription
+        baseTableName: payment_orders
+        baseColumnNames: user_subscription_id
+        referencedTableName: user_subscriptions
+        referencedColumnNames: user_subscription_id
+        onDelete: RESTRICT
+    - addUniqueConstraint:
+        tableName: payment_orders
+        constraintName: uq_payment_orders_code
+        columnNames: order_code
+    - addUniqueConstraint:
+        tableName: payment_orders
+        constraintName: uq_payment_orders_subscription
+        columnNames: user_subscription_id
+    - addUniqueConstraint:
+        tableName: payment_orders
+        constraintName: uq_payment_orders_provider_link
+        columnNames: payment_provider, provider_payment_link_id
+    - createIndex:
+        tableName: payment_orders
+        indexName: idx_payment_orders_user_created
+        columns:
+        - column:
+            name: user_id
+        - column:
+            name: created_at
+    - createIndex:
+        tableName: payment_orders
+        indexName: idx_payment_orders_status_created
+        columns:
+        - column:
+            name: order_status
+        - column:
+            name: created_at

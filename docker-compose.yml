@@ -8,7 +8,7 @@ services:
       DB_URL: ${DB_URL:?Set Neon DB_URL}
       DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in Dockploy}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Dockploy}
-      REDIS_HOST: ${REDIS_HOST:?Set REDIS_HOST}
+      REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dockploy}
@@ -36,28 +36,23 @@ services:
     expose:
       - "8080"
 
-  postgres:
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_NAME:-signify}
-      POSTGRES_USER: ${DB_USERNAME:?Set DB_USERNAME in Dockploy}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Dockploy}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
+
+    command:
+      - sh
+      - -c
+      - redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+
     volumes:
       - redis_data:/data
+
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG" ]
       interval: 10s
       timeout: 5s
       retries: 5
