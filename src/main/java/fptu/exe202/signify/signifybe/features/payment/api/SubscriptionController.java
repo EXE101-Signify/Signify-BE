@@ -7,6 +7,9 @@ import fptu.exe202.signify.signifybe.features.payment.api.dto.SubscriptionPlanRe
 import fptu.exe202.signify.signifybe.features.payment.api.dto.SubscriptionResponse;
 import fptu.exe202.signify.signifybe.features.payment.application.SubscriptionService;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.JpaSubscriptionPlanRepository;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,16 +21,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/subscription")
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SubscriptionController {
-    private final JpaSubscriptionPlanRepository plans;
-    private final SubscriptionService subscriptions;
-    private final Clock clock;
 
-    public SubscriptionController(JpaSubscriptionPlanRepository plans, SubscriptionService subscriptions, Clock clock) {
-        this.plans = plans;
-        this.subscriptions = subscriptions;
-        this.clock = clock;
-    }
+    JpaSubscriptionPlanRepository plans;
+
+    SubscriptionService subscriptions;
+
+    Clock clock;
 
     @GetMapping("/plans")
     public ResponseEntity<ApiResponse<List<SubscriptionPlanResponse>>> plans() {

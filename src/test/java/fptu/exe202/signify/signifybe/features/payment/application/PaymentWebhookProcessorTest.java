@@ -72,7 +72,10 @@ class PaymentWebhookProcessorTest {
 
         assertThrows(PaymentWebhookException.class, () -> processor.process(success));
         assertEquals("PENDING", order.getStatus());
-        verifyNoInteractions(subscriptions, transactions);
+        verify(gateway).get(123L);
+        verify(transactions).findByPaymentProviderAndProviderTransactionReference("PAYOS", "ref-1");
+        verify(transactions, never()).save(any());
+        verifyNoInteractions(subscriptions);
         verify(events, never()).save(any());
     }
 
@@ -109,7 +112,9 @@ class PaymentWebhookProcessorTest {
         order.assignUserSubscription(mock(UserSubscription.class));
         when(orders.findLockedByOrderCode(123)).thenReturn(Optional.of(order));
         processor.process(success);
-        verifyNoInteractions(subscriptions, transactions, gateway);
+        verify(transactions).findByPaymentProviderAndProviderTransactionReference("PAYOS", "ref-1");
+        verify(transactions, never()).save(any());
+        verifyNoInteractions(subscriptions, gateway);
         verify(events).save(argThat(e -> "IGNORED".equals(e.getProcessingStatus())));
     }
 

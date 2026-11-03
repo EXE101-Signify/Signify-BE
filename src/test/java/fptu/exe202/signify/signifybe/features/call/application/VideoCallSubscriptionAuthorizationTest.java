@@ -72,11 +72,13 @@ class VideoCallSubscriptionAuthorizationTest {
 
     @Test void receiverMayAcceptWhenBothParticipantsHavePremium() {
         VideoCall call = new VideoCall(5, 10, 20, 100);
+        ReflectionTestUtils.setField(call, "id", 99L);
         when(repository.findLockedById(99L)).thenReturn(Optional.of(call));
         when(subscriptions.hasActiveSubscription(10L)).thenReturn(true);
         when(subscriptions.hasActiveSubscription(20L)).thenReturn(true);
 
         assertEquals(VideoCallStatus.ACCEPTED, service.accept(99L, receiver).getStatus());
+        verify(events).publishEvent(any(VideoCallEvent.class));
         verify(subscriptions).hasActiveSubscription(10L);
         verify(subscriptions).hasActiveSubscription(20L);
     }

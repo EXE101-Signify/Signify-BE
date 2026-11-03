@@ -5,6 +5,9 @@ import fptu.exe202.signify.signifybe.features.auth.domain.exception.AuthExceptio
 import fptu.exe202.signify.signifybe.features.payment.api.dto.PaymentOrderResponse;
 import fptu.exe202.signify.signifybe.features.payment.domain.*;
 import fptu.exe202.signify.signifybe.features.payment.infrastructure.persistence.*;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,23 +17,24 @@ import java.time.Clock;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class PaymentOrderService {
-    private static final String PREMIUM_CODE = "PREMIUM_MONTHLY";
-    private static final long MIN_ORDER_CODE = 100_000_000_000L;
-    private static final long ORDER_CODE_RANGE = 900_000_000_000L;
-    private final JpaPaymentOrderRepository orders;
-    private final JpaSubscriptionPlanRepository plans;
-    private final JpaUserSubscriptionRepository subscriptions;
-    private final Clock clock;
-    private final SecureRandom random = new SecureRandom();
+    static String PREMIUM_CODE = "PREMIUM_MONTHLY";
 
-    public PaymentOrderService(JpaPaymentOrderRepository orders, JpaSubscriptionPlanRepository plans,
-                               JpaUserSubscriptionRepository subscriptions, Clock clock) {
-        this.orders = orders;
-        this.plans = plans;
-        this.subscriptions = subscriptions;
-        this.clock = clock;
-    }
+    static long MIN_ORDER_CODE = 100_000_000_000L;
+
+    static long ORDER_CODE_RANGE = 900_000_000_000L;
+
+    JpaPaymentOrderRepository orders;
+
+    JpaSubscriptionPlanRepository plans;
+
+    JpaUserSubscriptionRepository subscriptions;
+
+    Clock clock;
+
+    SecureRandom random = new SecureRandom();
 
     @Transactional
     public PaymentOrderResponse createSubscriptionOrder(CurrentUser authenticatedUser) {
