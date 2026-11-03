@@ -39,8 +39,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
-                                                    ApiSecurityErrorHandler errors, AccountAccessService accountAccess,
-                                                    SessionAccessService sessionAccess) throws Exception {
+                                                   ApiSecurityErrorHandler errors, AccountAccessService accountAccess,
+                                                   SessionAccessService sessionAccess) throws Exception {
         http.cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -51,7 +51,7 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, PUBLIC_ACCOUNT_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/payment/payos/webhook").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/webhooks/payos").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/subscription/plans").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
@@ -65,5 +65,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }
