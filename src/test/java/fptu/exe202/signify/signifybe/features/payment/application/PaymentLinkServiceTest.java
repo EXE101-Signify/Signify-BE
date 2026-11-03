@@ -55,6 +55,26 @@ class PaymentLinkServiceTest {
         assertNull(order.getProviderPaymentLinkId());
     }
 
+    @Test void rejectsGatewayLinkWithoutCheckoutUrl() {
+        when(orders.findLockedById(4L)).thenReturn(Optional.of(order));
+        when(gateway.create(123_456_789_012L, 49_000L)).thenReturn(
+                new PaymentGateway.GatewayPaymentLink(123_456_789_012L, 49_000L, "link-1", null, "PENDING", null));
+
+        assertThrows(PaymentGatewayException.class, () -> service.createPaymentLink(4L, owner));
+        assertNull(order.getProviderPaymentLinkId());
+        assertNull(order.getCheckoutUrl());
+    }
+
+    @Test void existingRemoteLinkWithoutStoredCheckoutDoesNotCreateSecondPayOsLink() {
+        when(orders.findLockedById(4L)).thenReturn(Optional.of(order));
+        when(gateway.get(123_456_789_012L)).thenReturn(
+                new PaymentGateway.GatewayPaymentLink(123_456_789_012L, 49_000L, "link-1", null, "PENDING", null));
+
+        assertThrows(PaymentGatewayException.class, () -> service.createPaymentLink(4L, owner));
+        verify(gateway, never()).create(anyLong(), anyLong());
+        assertNull(order.getProviderPaymentLinkId());
+    }
+
     @Test void retryUsesStoredLinkWithoutGatewayCall() {
         order.attachPaymentLink("link-1", "https://pay.example/link-1", null, 1_000);
         when(orders.findLockedById(4)).thenReturn(Optional.of(order));
@@ -71,7 +91,7 @@ class PaymentLinkServiceTest {
     }
 
     @Test void retrievalDoesNotMarkOrderPaid() {
-        when(orders.findById(4)).thenReturn(Optional.of(order));
+        when(orders.findById(4L)).thenReturn(Optional.of(order));
         when(gateway.get(123_456_789_012L)).thenReturn(
                 new PaymentGateway.GatewayPaymentLink(123_456_789_012L, 49_000L, "link-1", null, "PAID", null));
 

@@ -1,4 +1,4 @@
-# Signify Call API (Section 4B)
+# Signify Call API
 
 This document describes the call and AI prediction entry points present in the Signify Spring Boot backend. It records source and unit-test evidence; it does not claim a live deployment or browser-to-backend runtime test.
 
@@ -29,6 +29,8 @@ Request (`CreateVideoCallRequest`):
 ```
 
 Only `conversationId` is accepted. The backend verifies that the caller is an active member of a `PRIVATE` conversation with exactly two distinct active participants, checks that neither participant has blocked the other, and derives the receiver from the other participant.
+
+Both participants must have an active Signify Premium subscription. A participant's `account.role` does not grant call access. The server uses participant locks to reject simultaneous ongoing call requests. See [payment-subscription.md](payment-subscription.md) for subscription validity and renewal.
 
 Success is HTTP 200. `data` is a `VideoCallResponse`:
 
@@ -147,6 +149,8 @@ An accepted AI letter also sends `AI_TEXT_UPDATE` with the appended text; the ex
 
 `VideoCallStatus` is persisted by name. Only `ACCEPTED` is considered active by `validateActiveCall` and by call-queue subscription authorization.
 
+The receiver's `/accept` request rechecks Premium for both participants. If either entitlement expires during an accepted call, the backend closes the call when signaling/AI access is checked and a scheduled job also reconciles quiet calls. Further STOMP subscription/send and reconnect attempts fail. The frontend must stop its peer connection when it receives the terminal call event.
+
 | Status | Meaning | Who can trigger | Next states |
 | --- | --- | --- | --- |
 | `CALLING` | Outgoing call created | Authenticated caller in `POST /api/calls` | `ACCEPTED`, `REJECTED`, `MISSED` (service only), `BUSY` |
@@ -169,6 +173,7 @@ Errors use the shared `ApiResponse` format. These are errors explicitly mapped b
 | 400 | `Validation failed` | Invalid positive path ID or invalid JSON request field |
 | 401 | `Authentication required or invalid bearer token` | Missing, invalid, expired, or revoked bearer authentication |
 | 403 | `Call access denied` | User is not a participant or lacks permission for that transition |
+| 403 | `Active Signify Premium is required for both call participants` | Caller or receiver has no current Premium entitlement |
 | 403 | `Direct interaction is unavailable` | A block prevents creating the call |
 | 404 | `Call not found` | Requested call ID does not exist |
 | 404 | `Conversation not found` | Conversation for call creation does not exist |
@@ -209,7 +214,7 @@ ack:auto
 
 ### Send / trigger
 
-There is no STOMP `SEND` destination for call lifecycle or AI prediction. The prediction is triggered by the multipart REST endpoint above. Existing STOMP `SEND` mappings are for chat typing and presence only.
+There is no STOMP `SEND` destination for call lifecycle or AI prediction. The prediction is triggered by the multipart REST endpoint above. WebRTC signaling uses the separate `SEND /app/calls/{callId}/webrtc` route below; chat typing and presence retain their own mappings.
 
 ### Event received
 
@@ -219,7 +224,7 @@ Each participant receives an `AiPredictionEvent` only for an accepted letter and
 
 ## WebRTC signaling
 
-No call signaling controller, call-related `@MessageMapping`, SDP offer/answer handlers, or ICE candidate handlers were found: **NOT FOUND**. The current call API changes persisted call state and emits the AI prediction event; it does not implement WebRTC signaling. Whether media flows directly between browsers is not established by this backend code.
+An authenticated participant in an `ACCEPTED` call can subscribe to `/user/queue/calls/{callId}/webrtc` and send to `/app/calls/{callId}/webrtc`. `WebRtcSignalingController` relays `WEBRTC_READY`, `WEBRTC_OFFER`, `WEBRTC_ANSWER` and `WEBRTC_ICE_CANDIDATE` only to the other participant. The request has exactly `type` and `payload`; SDP uses `{ "type": "offer|answer", "sdp": "..." }`, ICE uses `candidate`, `sdpMid`, `sdpMLineIndex` and optional `usernameFragment`. The receiver sends `READY`/`ANSWER`; the caller sends `OFFER`; either can send ICE. The server validates the call and current Premium entitlement before forwarding. Browser peer connection setup and P2P media transport remain client responsibilities.
 
 Call history endpoint: **NOT IMPLEMENTED**.
 
@@ -236,15 +241,15 @@ Call history endpoint: **NOT IMPLEMENTED**.
 | Call history | NOT IMPLEMENTED | No history route/service found |
 | WebSocket call subscription | IMPLEMENTED — NOT RUNTIME VERIFIED | `ChatWebSocketConfig`, `ChatStompAuthorization`, `VideoCallStompAuthorizationTest` |
 | AI prediction event | IMPLEMENTED — NOT RUNTIME VERIFIED | `AiPredictionController`, `AiPredictionService`, `VideoCallAiPredictionTest` |
-| SDP offer | NOT FOUND | No offer mapping or handler found |
-| SDP answer | NOT FOUND | No answer mapping or handler found |
-| ICE candidate | NOT FOUND | No candidate mapping or handler found |
+| SDP offer | IMPLEMENTED — NOT RUNTIME VERIFIED | `WebRtcSignalingController`, `WebRtcSignalingService` |
+| SDP answer | IMPLEMENTED — NOT RUNTIME VERIFIED | `WebRtcSignalingController`, `WebRtcSignalingService` |
+| ICE candidate | IMPLEMENTED — NOT RUNTIME VERIFIED | `WebRtcSignalingController`, `WebRtcSignalingService` |
 | Authentication | IMPLEMENTED — NOT RUNTIME VERIFIED | `SecurityConfig`, `JwtAuthenticationFilter`, STOMP interceptor |
-| Call authorization | IMPLEMENTED — NOT RUNTIME VERIFIED | `VideoCallService.validateActiveCall`, call access and prediction tests |
+| Call authorization | IMPLEMENTED — NOT RUNTIME VERIFIED | `VideoCallService.validateActiveCall`, `VideoCallSubscriptionAuthorizationTest` |
 | Runtime test | NOT RUNTIME VERIFIED | Focused tests mock AI and messaging; no live service/broker test found |
 
 ## Section 4B scope
 
 Section 4B accepts one uploaded image for an authenticated participant in an accepted call, invokes the configured external AI client, and returns and privately publishes one `AI_SIGN_PREDICTION` event to the caller and receiver. It does not persist transcripts.
 
-Frontend camera capture/subscription UI and WebRTC signaling integration are not implemented here. The external AI model runs in the separate Python service; this backend documentation does not claim that model recognition or end-to-end browser operation was runtime verified.
+Frontend camera capture/subscription UI and browser WebRTC peer connection are outside this backend. The external AI model runs in the separate Python service; this backend documentation does not claim that model recognition or end-to-end browser operation was runtime verified.

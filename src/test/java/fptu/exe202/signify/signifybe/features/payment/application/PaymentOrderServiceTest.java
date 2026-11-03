@@ -41,7 +41,7 @@ class PaymentOrderServiceTest {
         lenient().when(plan.getPlanCode()).thenReturn("PREMIUM_MONTHLY");
     }
 
-    @Test void createsPendingOrderWithDatabasePriceAndUniqueCode() {
+    @Test void createsPendingOrderWithDatabasePriceAndPayOsCompatibleCode() {
         when(orders.findPendingOrders(eq(7L), eq("PENDING"), eq(1_000L), any(Pageable.class))).thenReturn(List.of());
         when(plans.findByPlanCodeAndActiveTrue("PREMIUM_MONTHLY")).thenReturn(Optional.of(plan));
         when(subscriptions.findActiveSubscription(7, 1_000)).thenReturn(Optional.empty());
@@ -85,6 +85,28 @@ class PaymentOrderServiceTest {
         order.markPaid(2_000);
         assertThrows(PaymentOrderException.class, () -> order.markCancelled(3_000));
         assertThrows(PaymentOrderException.class, () -> order.markPaid(3_000));
+    }
+
+    @Test void cancelledAndExpiredOrdersCannotBecomePaid() {
+        PaymentOrder cancelled = new PaymentOrder(100_000_000_004L, 7, plan, "NEW_SUBSCRIPTION", 1_000);
+        PaymentOrder expired = new PaymentOrder(100_000_000_005L, 7, plan, "RENEWAL", 1_000);
+
+        cancelled.markCancelled(2_000);
+        expired.markExpired(2_000);
+
+        assertEquals("CANCELLED", cancelled.getStatus());
+        assertEquals("EXPIRED", expired.getStatus());
+        assertThrows(PaymentOrderException.class, () -> cancelled.markPaid(3_000));
+        assertThrows(PaymentOrderException.class, () -> expired.markPaid(3_000));
+    }
+
+    @Test void cancellationRequiresOrderOwnership() {
+        PaymentOrder otherUsersOrder = new PaymentOrder(100_000_000_006L, 8, plan, "NEW_SUBSCRIPTION", 1_000);
+        when(orders.findLockedByOrderCode(100_000_000_006L)).thenReturn(Optional.of(otherUsersOrder));
+
+        assertThrows(PaymentOrderException.class,
+                () -> service.markPaymentOrderCancelled(100_000_000_006L, user));
+        assertEquals("PENDING", otherUsersOrder.getStatus());
     }
 
     @Test void refusesAnotherUsersOrder() {

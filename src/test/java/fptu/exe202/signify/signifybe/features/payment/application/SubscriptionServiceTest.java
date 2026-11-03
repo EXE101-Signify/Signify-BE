@@ -84,6 +84,29 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void nonLeapJanuary31ExpiresOnFebruary28() {
+        long january31 = ZonedDateTime.of(2025, 1, 31, 19, 0, 0, 0,
+                SubscriptionService.BUSINESS_ZONE).toInstant().toEpochMilli();
+        long february28 = ZonedDateTime.of(2025, 2, 28, 19, 0, 0, 0,
+                SubscriptionService.BUSINESS_ZONE).toInstant().toEpochMilli();
+
+        SubscriptionPeriod period = service.calculateNextSubscriptionPeriod(null, january31, 1);
+
+        assertEquals(january31, period.startsAt());
+        assertEquals(february28, period.expiresAt());
+    }
+
+    @Test
+    void subscriptionHistoryReturnsPersistedPeriods() {
+        UserSubscription first = mock(UserSubscription.class);
+        UserSubscription second = mock(UserSubscription.class);
+        when(subscriptions.findByUserIdOrderBySubscriptionStartAtDesc(7L))
+                .thenReturn(List.of(second, first));
+
+        assertEquals(List.of(second, first), service.getSubscriptionHistory(7L));
+    }
+
+    @Test
     void scheduledRenewalDoesNotGrantAccessBeforeStart() {
         when(subscriptions.findActiveSubscription(7, NOW)).thenReturn(Optional.empty());
         when(subscriptions.findLatestEntitlementEnd(eq(7L), any(), eq(NOW)))
