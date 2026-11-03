@@ -56,6 +56,16 @@ class PaymentWebhookProcessorTest {
         verifyNoInteractions(subscriptions, transactions);
     }
 
+    @Test void signedIncompletePaymentDataForKnownOrderCannotActivate() {
+        when(orders.findLockedByOrderCode(123L)).thenReturn(Optional.of(order));
+        var incomplete = new VerifiedPayOSWebhook(123L, 0, null, null, null, null,
+                null, "00", true);
+
+        assertThrows(PaymentWebhookException.class, () -> processor.process(incomplete));
+        assertEquals("PENDING", order.getStatus());
+        verifyNoInteractions(transactions, subscriptions, gateway, events);
+    }
+
     @Test void wrongCurrencyCannotActivate() {
         when(orders.findLockedByOrderCode(123L)).thenReturn(Optional.of(order));
         var wrong = new VerifiedPayOSWebhook(123L, 49_000L, "USD", "ref-1", "link-1",

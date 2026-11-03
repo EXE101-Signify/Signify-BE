@@ -48,31 +48,50 @@ class PayOSWebhookVerifierTest {
         assertThrows(PaymentWebhookException.class, () -> new PayOSWebhookVerifier(sdk).verify(payload));
     }
 
-    @Test void signedPayloadStillRequiresProviderEnvelopeStatus() {
+    @Test void signedPayloadWithoutSuccessCannotIndicatePayment() {
         PayOS sdk = new PayOS("local-client", "local-api-key", TEST_CHECKSUM_KEY);
         Map<String, Object> payload = signedPayload(sdk);
         payload.remove("success");
 
-        assertThrows(PaymentWebhookException.class, () -> new PayOSWebhookVerifier(sdk).verify(payload));
+        assertFalse(new PayOSWebhookVerifier(sdk).verify(payload).envelopeSuccess());
+    }
+
+    @Test void sdkVerifiesRegistrationSampleWithIncompletePaymentFields() {
+        PayOS sdk = new PayOS("local-client", "local-api-key", TEST_CHECKSUM_KEY);
+
+        var result = new PayOSWebhookVerifier(sdk).verify(signedPayload(sdk, true));
+
+        assertEquals(123L, result.orderCode());
+        assertEquals(0, result.amount());
+        assertNull(result.currency());
+        assertNull(result.paymentLinkId());
     }
 
     private static Map<String, Object> signedPayload(PayOS sdk) {
+        return signedPayload(sdk, false);
+    }
+
+    private static Map<String, Object> signedPayload(PayOS sdk, boolean incomplete) {
         WebhookData data = new WebhookData();
         data.setOrderCode(123L);
-        data.setAmount(3_000L);
+        if (!incomplete) data.setAmount(3_000L);
         data.setDescription("VQRIO123");
         data.setAccountNumber("12345678");
         data.setReference("TF230204212323");
         data.setTransactionDateTime("2023-02-04 18:25:00");
-        data.setCurrency("VND");
-        data.setPaymentLinkId("124c33293c43417ab7879e14c8d9eb18");
-        data.setCode("00");
+        if (!incomplete) {
+            data.setCurrency("VND");
+            data.setPaymentLinkId("124c33293c43417ab7879e14c8d9eb18");
+            data.setCode("00");
+        }
         data.setDesc("Success");
         Map<String, Object> payload = new java.util.HashMap<>();
         payload.put("code", "00");
         payload.put("desc", "success");
         payload.put("success", true);
-        payload.put("data", new ObjectMapper().convertValue(data, new TypeReference<Map<String, Object>>() {}));
+        Map<String, Object> dataMap = new ObjectMapper().convertValue(data, new TypeReference<Map<String, Object>>() {});
+        dataMap.values().removeIf(java.util.Objects::isNull);
+        payload.put("data", dataMap);
         payload.put("signature", sdk.getCrypto().createSignatureFromObj(data, TEST_CHECKSUM_KEY));
         return payload;
     }

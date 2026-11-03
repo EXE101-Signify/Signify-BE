@@ -38,6 +38,14 @@ class PaymentWebhookProcessor {
     @Transactional
     public void process(VerifiedPayOSWebhook data) {
         PaymentOrder order = orders.findLockedByOrderCode(data.orderCode()).orElse(null);
+        if (order != null && (data.amount() <= 0 || data.currency() == null || data.currency().isBlank()
+                || data.paymentLinkId() == null || data.paymentLinkId().isBlank()
+                || data.dataCode() == null || data.dataCode().isBlank()
+                || data.envelopeCode() == null || data.envelopeCode().isBlank())) {
+            log.warn("PayOS webhook rejected stage=known_order_validation reason=missing_payment_fields orderCode={}",
+                    data.orderCode());
+            throw PaymentWebhookException.invalid();
+        }
         if (order != null && (!PROVIDER.equals(order.getPaymentProvider()) || !"VND".equals(data.currency())
                 || !order.getCurrencyCode().equals(data.currency()) || order.getOrderCode() != data.orderCode()
                 || order.getTotalAmount() != data.amount()

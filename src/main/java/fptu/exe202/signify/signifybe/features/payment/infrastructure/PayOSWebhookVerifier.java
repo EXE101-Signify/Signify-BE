@@ -39,19 +39,28 @@ public class PayOSWebhookVerifier implements PaymentWebhookVerifier {
                     ex.getClass().getSimpleName());
             throw PaymentWebhookException.retry();
         }
-        if (data == null || data.getOrderCode() == null || data.getAmount() == null
-                || data.getOrderCode() <= 0 || data.getAmount() <= 0
-                || data.getCurrency() == null || data.getCurrency().isBlank()
-                || data.getPaymentLinkId() == null || data.getPaymentLinkId().isBlank()
-                || data.getCode() == null || data.getCode().isBlank()
-                || !(payload.get("code") instanceof String envelopeCode) || envelopeCode.isBlank()
-                || !(payload.get("success") instanceof Boolean envelopeSuccess)) {
+        if (data == null || data.getOrderCode() == null || data.getOrderCode() <= 0) {
             log.warn("PayOS webhook rejected stage=verified_data_validation exception=PaymentWebhookException orderCode={}",
                     data == null ? null : data.getOrderCode());
             throw PaymentWebhookException.invalid();
         }
+        String envelopeCode = payload.get("code") instanceof String code ? code : null;
+        boolean envelopeSuccess = Boolean.TRUE.equals(payload.get("success"));
+        if (data.getAmount() == null || data.getAmount() <= 0
+                || data.getCurrency() == null || data.getCurrency().isBlank()
+                || data.getPaymentLinkId() == null || data.getPaymentLinkId().isBlank()
+                || data.getCode() == null || data.getCode().isBlank()
+                || envelopeCode == null || envelopeCode.isBlank()
+                || !(payload.get("success") instanceof Boolean))
+            log.info("PayOS webhook verified with incomplete payment fields orderCode={} amountValid={} currencyPresent={} paymentLinkIdPresent={} dataCodePresent={} envelopeCodePresent={} successPresent={}",
+                    data.getOrderCode(), data.getAmount() != null && data.getAmount() > 0,
+                    data.getCurrency() != null && !data.getCurrency().isBlank(),
+                    data.getPaymentLinkId() != null && !data.getPaymentLinkId().isBlank(),
+                    data.getCode() != null && !data.getCode().isBlank(),
+                    envelopeCode != null && !envelopeCode.isBlank(),
+                    payload.get("success") instanceof Boolean);
         log.debug("PayOS webhook verified stage=signature_verified orderCode={}", data.getOrderCode());
-        return new VerifiedPayOSWebhook(data.getOrderCode(), data.getAmount(), data.getCurrency(),
+        return new VerifiedPayOSWebhook(data.getOrderCode(), data.getAmount() == null ? 0 : data.getAmount(), data.getCurrency(),
                 data.getReference(), data.getPaymentLinkId(), data.getCode(), data.getTransactionDateTime(),
                 envelopeCode, envelopeSuccess);
     }
