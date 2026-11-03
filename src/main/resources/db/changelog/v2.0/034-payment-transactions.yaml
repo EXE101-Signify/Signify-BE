@@ -1,0 +1,84 @@
+databaseChangeLog:
+- changeSet:
+    id: payment-payment_transactions
+    author: signify
+    changes:
+    - createTable:
+        tableName: payment_transactions
+        columns:
+        - column:
+            name: payment_transaction_id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: payment_order_id
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: payment_provider
+            type: VARCHAR(30)
+            constraints:
+              nullable: false
+        - column:
+            name: provider_transaction_reference
+            type: VARCHAR(255)
+        - column:
+            name: transaction_amount
+            type: BIGINT
+            constraints:
+              nullable: false
+        - column:
+            name: currency_code
+            type: VARCHAR(3)
+            defaultValue: VND
+            constraints:
+              nullable: false
+        - column:
+            name: transaction_status
+            type: VARCHAR(30)
+            constraints:
+              nullable: false
+        - column:
+            name: payment_method
+            type: VARCHAR(50)
+        - column:
+            name: failure_code
+            type: VARCHAR(100)
+        - column:
+            name: failure_message
+            type: TEXT
+        - column:
+            name: completed_at
+            type: BIGINT
+        - column:
+            name: created_at
+            type: BIGINT
+            constraints:
+              nullable: false
+    - addForeignKeyConstraint:
+        constraintName: fk_payment_transactions_order
+        baseTableName: payment_transactions
+        baseColumnNames: payment_order_id
+        referencedTableName: payment_orders
+        referencedColumnNames: payment_order_id
+        onDelete: RESTRICT
+    - addUniqueConstraint:
+        tableName: payment_transactions
+        constraintName: uq_payment_transactions_provider_reference
+        columnNames: payment_provider, provider_transaction_reference
+    - createIndex:
+        tableName: payment_transactions
+        indexName: idx_payment_transactions_order
+        columns:
+        - column:
+            name: payment_order_id
+    - createIndex:
+        tableName: payment_transactions
+        indexName: idx_payment_transactions_status
+        columns:
+        - column:
+            name: transaction_status
