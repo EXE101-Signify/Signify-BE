@@ -108,4 +108,35 @@ class VideoCallSubscriptionAuthorizationTest {
         when(expiry.closeIfExpired(99)).thenReturn(true);
         assertThrows(VideoCallException.class, () -> service.validateActiveCall(99L, caller));
     }
+
+    @Test void eitherParticipantCanEndRingingCallAndRetrySafely() {
+        VideoCall call = new VideoCall(5, 10, 20, 100);
+        ReflectionTestUtils.setField(call, "id", 99L);
+        when(repository.findLockedById(99L)).thenReturn(Optional.of(call));
+
+        assertEquals(VideoCallStatus.COMPLETED, service.complete(99L, caller).getStatus());
+        assertEquals(1_000L, call.getEndedAt());
+        assertNull(call.getStartedAt());
+        assertSame(call, service.complete(99L, receiver));
+        verify(events, times(1)).publishEvent(any(VideoCallEvent.class));
+    }
+
+    @Test void endCurrentClosesOnlyActorsOngoingCalls() {
+        VideoCall ringing = new VideoCall(5, 10, 20, 100);
+        VideoCall connected = new VideoCall(6, 30, 10, 100);
+        connected.accept(200);
+        VideoCall unrelated = new VideoCall(7, 30, 40, 100);
+        ReflectionTestUtils.setField(ringing, "id", 1L);
+        ReflectionTestUtils.setField(connected, "id", 2L);
+        when(repository.findOngoingIdsForUser(eq(10L), anyList())).thenReturn(java.util.List.of(1L, 2L, 3L));
+        when(repository.findLockedById(1L)).thenReturn(Optional.of(ringing));
+        when(repository.findLockedById(2L)).thenReturn(Optional.of(connected));
+        when(repository.findLockedById(3L)).thenReturn(Optional.of(unrelated));
+
+        assertEquals(2, service.endCurrent(caller).size());
+        assertEquals(VideoCallStatus.COMPLETED, ringing.getStatus());
+        assertEquals(VideoCallStatus.COMPLETED, connected.getStatus());
+        assertEquals(VideoCallStatus.CALLING, unrelated.getStatus());
+        verify(events, times(2)).publishEvent(any(VideoCallEvent.class));
+    }
 }

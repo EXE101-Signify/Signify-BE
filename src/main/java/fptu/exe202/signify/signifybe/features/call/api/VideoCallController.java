@@ -13,6 +13,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Validated
 @RestController
 @RequestMapping("/api/calls")
@@ -43,6 +45,12 @@ public class VideoCallController {
     public ResponseEntity<ApiResponse<VideoCallResponse>> end(@AuthenticationPrincipal CurrentUser user,
                                                                @PathVariable @Positive long callId) {
         return ok(VideoCallResponse.from(calls.complete(callId, user)));
+    }
+
+    @PostMapping("/end-current")
+    public ResponseEntity<ApiResponse<List<VideoCallResponse>>> endCurrent(@AuthenticationPrincipal CurrentUser user) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(ApiResponse.success(calls.endCurrent(user).stream().map(VideoCallResponse::from).toList()));
     }
 
     @PostMapping("/{callId}/busy")

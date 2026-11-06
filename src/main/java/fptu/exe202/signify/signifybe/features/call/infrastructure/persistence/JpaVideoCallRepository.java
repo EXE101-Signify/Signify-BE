@@ -20,8 +20,18 @@ public interface JpaVideoCallRepository extends JpaRepository<VideoCall, Long> {
     @Query("select count(c)>0 from VideoCall c where c.status in :statuses and (c.callerId=:userId or c.receiverId=:userId)")
     boolean hasOngoingCall(@Param("userId") long userId, @Param("statuses") List<VideoCallStatus> statuses);
 
+    @Query("select c.id from VideoCall c where c.status in :statuses and (c.callerId = :userId or c.receiverId = :userId)")
+    List<Long> findOngoingIdsForUser(@Param("userId") long userId,
+                                      @Param("statuses") List<VideoCallStatus> statuses);
+
     @Query("select c.id from VideoCall c where c.status=:status")
     List<Long> findIdsByStatus(@Param("status") VideoCallStatus status);
+
+    @Query("select c.id from VideoCall c where c.status = :status and c.createdAt <= :cutoff")
+    List<Long> findRingingBefore(@Param("status") VideoCallStatus status, @Param("cutoff") long cutoff);
+
+    @Query("select c.id from VideoCall c where c.status = :status and coalesce(c.startedAt, c.createdAt) <= :cutoff")
+    List<Long> findConnectedBefore(@Param("status") VideoCallStatus status, @Param("cutoff") long cutoff);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select call from VideoCall call where call.id = :id")

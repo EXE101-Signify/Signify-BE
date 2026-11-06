@@ -72,7 +72,9 @@ POST /api/calls/{callId}/end
 Authorization: Bearer <JWT>
 ```
 
-Either participant can end an `ACCEPTED` call. The transition sets `endedAt` and changes the status to `COMPLETED`. Success is HTTP 200 with the updated `VideoCallResponse`.
+Either participant can end a `CALLING` or `ACCEPTED` call. The transition sets `endedAt` and changes the status to `COMPLETED`. Retrying `/end` for an already completed call returns that call. Success is HTTP 200 with the updated `VideoCallResponse`.
+
+If the client has lost the call ID, `POST /api/calls/end-current` ends all `CALLING` or `ACCEPTED` calls belonging to the authenticated user. It returns HTTP 200 with an array of ended `VideoCallResponse` objects, or an empty array when there are none. Other users' calls are unaffected.
 
 ### Mark a call busy
 
@@ -85,7 +87,7 @@ Only the receiver can mark a `CALLING` call as `BUSY`. Success is HTTP 200 with 
 
 ### Missed call
 
-`VideoCallService.miss(callId, actor)` implements `CALLING -> MISSED` for the caller. There is no REST route, timeout scheduler, or automatic invocation for this operation: **NOT IMPLEMENTED** as an externally triggerable missed-call flow.
+Unanswered calls become `MISSED` after 60 seconds by default. The timeout job sets `endedAt` and publishes a status event. The caller can also use `/end` to cancel immediately, producing `COMPLETED`. The ring timeout, maximum accepted-call duration (12 hours by default), and sweep interval (15 seconds by default) are configurable with `CALL_RINGING_TIMEOUT_MS`, `CALL_MAX_DURATION_MS`, and `CALL_TIMEOUT_SWEEP_MS`. Accepted calls that exceed the maximum duration become `COMPLETED`, preventing an abandoned call from blocking future calls indefinitely.
 
 ### Request an AI prediction and publish it
 
@@ -153,12 +155,12 @@ The receiver's `/accept` request rechecks Premium for both participants. If eith
 
 | Status | Meaning | Who can trigger | Next states |
 | --- | --- | --- | --- |
-| `CALLING` | Outgoing call created | Authenticated caller in `POST /api/calls` | `ACCEPTED`, `REJECTED`, `MISSED` (service only), `BUSY` |
+| `CALLING` | Outgoing call created | Authenticated caller in `POST /api/calls` | `ACCEPTED`, `REJECTED`, `MISSED` (timeout or service), `BUSY`, `COMPLETED` |
 | `ACCEPTED` | Receiver accepted; active/connected for backend validation | Receiver in `/accept` | `COMPLETED` |
 | `REJECTED` | Receiver rejected | Receiver in `/reject` | None |
-| `MISSED` | Caller marks unanswered call missed | Caller through service method only; no route/scheduler | None |
+| `MISSED` | Unanswered call timed out | Scheduled timeout or caller through service method | None |
 | `BUSY` | Receiver reports busy | Receiver in `/busy` | None |
-| `COMPLETED` | An accepted call ended | Either participant in `/end` | None |
+| `COMPLETED` | A participant ended the call, or an accepted call timed out | Either participant in `/end` or scheduled timeout | None |
 
 Invalid transitions return HTTP 409 with `Invalid call state transition`. Attempting active-call validation on a non-`ACCEPTED` state returns HTTP 409 with `Call is not active`.
 

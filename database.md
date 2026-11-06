@@ -177,7 +177,7 @@ payment_orders
 #### TABLE: video_calls
 **Mục đích**: Lưu lịch sử cuộc gọi video.
 **Các column quan trọng**:
-- `status`: Trạng thái cuộc gọi: `CALLING`, `ACCEPTED`, `REJECTED`, `MISSED`, `COMPLETED`, `BUSY`. `ACCEPTED` là cuộc gọi đang kết nối; chỉ chuyển từ `CALLING` sang `ACCEPTED`, `REJECTED`, `MISSED` hoặc `BUSY`, và từ `ACCEPTED` sang `COMPLETED`.
+- `status`: Trạng thái cuộc gọi: `CALLING`, `ACCEPTED`, `REJECTED`, `MISSED`, `COMPLETED`, `BUSY`. `ACCEPTED` là cuộc gọi đang kết nối; `CALLING` có thể chuyển sang `ACCEPTED`, `REJECTED`, `MISSED`, `BUSY` hoặc `COMPLETED` (khi người tham gia kết thúc), và `ACCEPTED` chuyển sang `COMPLETED`. Cuộc gọi `CALLING` quá thời gian chờ tự chuyển sang `MISSED`, cuộc gọi `ACCEPTED` quá thời lượng tối đa tự chuyển sang `COMPLETED`.
 - `started_at`, `ended_at`: Thời gian bắt đầu và kết thúc để tính thời lượng.
 
 **Quan hệ**:

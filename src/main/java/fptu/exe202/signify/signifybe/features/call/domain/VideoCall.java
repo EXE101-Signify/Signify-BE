@@ -49,11 +49,17 @@ public class VideoCall {
     }
 
     public void reject() { transition(VideoCallStatus.CALLING, VideoCallStatus.REJECTED); }
-    public void miss() { transition(VideoCallStatus.CALLING, VideoCallStatus.MISSED); }
+    public void miss(long now) {
+        transition(VideoCallStatus.CALLING, VideoCallStatus.MISSED);
+        endedAt = now;
+    }
     public void busy() { transition(VideoCallStatus.CALLING, VideoCallStatus.BUSY); }
 
     public void complete(long now) {
-        transition(VideoCallStatus.ACCEPTED, VideoCallStatus.COMPLETED);
+        if (status == VideoCallStatus.COMPLETED) return;
+        if (status != VideoCallStatus.CALLING && status != VideoCallStatus.ACCEPTED)
+            throw VideoCallException.invalidTransition();
+        status = VideoCallStatus.COMPLETED;
         endedAt = now;
     }
 

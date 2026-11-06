@@ -59,6 +59,11 @@ chat:
     sweep-ms: ${CHAT_PRESENCE_SWEEP_MS:15000}
     reconcile-ms: ${CHAT_PRESENCE_RECONCILE_MS:60000}
 
+call:
+  ringing-timeout-ms: ${CALL_RINGING_TIMEOUT_MS:60000}
+  max-duration-ms: ${CALL_MAX_DURATION_MS:43200000}
+  timeout-sweep-ms: ${CALL_TIMEOUT_SWEEP_MS:15000}
+
 signify:
   ai:
     base-url: ${SIGNIFY_AI_BASE_URL:http://localhost:8000}

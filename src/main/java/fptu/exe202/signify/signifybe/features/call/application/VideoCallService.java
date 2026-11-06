@@ -17,6 +17,7 @@ import java.util.List;
 
 @Service
 public class VideoCallService {
+    private static final List<VideoCallStatus> ONGOING = List.of(VideoCallStatus.CALLING, VideoCallStatus.ACCEPTED);
     private final JpaVideoCallRepository calls;
     private final PrivateChatAccessService access;
     private final Clock clock;
@@ -42,8 +43,7 @@ public class VideoCallService {
         calls.lockParticipant(Math.min(callerId, receiverId));
         calls.lockParticipant(Math.max(callerId, receiverId));
         requirePremium(callerId, receiverId);
-        List<VideoCallStatus> ongoing = List.of(VideoCallStatus.CALLING, VideoCallStatus.ACCEPTED);
-        if (calls.hasOngoingCall(callerId, ongoing) || calls.hasOngoingCall(receiverId, ongoing))
+        if (calls.hasOngoingCall(callerId, ONGOING) || calls.hasOngoingCall(receiverId, ONGOING))
             throw VideoCallException.alreadyInCall();
         VideoCall call = calls.save(new VideoCall(conversationId, callerId, receiverId, clock.millis()));
         events.publishEvent(VideoCallEvent.incoming(call, call.getCreatedAt()));
@@ -73,17 +73,37 @@ public class VideoCallService {
     @Transactional
     public VideoCall complete(long callId, CurrentUser actor) {
         VideoCall call = lockedParticipantCall(callId, actor);
+        if (call.getStatus() == VideoCallStatus.COMPLETED) return call;
         long now = clock.millis();
         call.complete(now);
         events.publishEvent(VideoCallEvent.statusChanged(call, now));
         return call;
     }
 
+    /** Lets a user recover after losing the call ID or connection. */
+    @Transactional
+    public List<VideoCall> endCurrent(CurrentUser actor) {
+        long actorId = userId(actor);
+        List<VideoCall> ended = new java.util.ArrayList<>();
+        for (Long callId : calls.findOngoingIdsForUser(actorId, ONGOING)) {
+            VideoCall call = calls.findLockedById(callId).orElse(null);
+            if (call == null || (call.getCallerId() != actorId && call.getReceiverId() != actorId)
+                    || !ONGOING.contains(call.getStatus())) continue;
+            long now = clock.millis();
+            call.complete(now);
+            events.publishEvent(VideoCallEvent.statusChanged(call, now));
+            ended.add(call);
+        }
+        return ended;
+    }
+
     @Transactional
     public VideoCall miss(long callId, CurrentUser actor) {
         VideoCall call = lockedParticipantCall(callId, actor);
         if (call.getCallerId() != actor.userId()) throw VideoCallException.forbidden();
-        call.miss();
+        long now = clock.millis();
+        call.miss(now);
+        events.publishEvent(VideoCallEvent.statusChanged(call, now));
         return call;
     }
 

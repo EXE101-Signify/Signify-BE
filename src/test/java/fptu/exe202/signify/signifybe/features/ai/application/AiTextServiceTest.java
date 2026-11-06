@@ -136,7 +136,7 @@ class AiTextServiceTest {
             switch (status) {
                 case COMPLETED -> { inactive.accept(200); inactive.complete(300); }
                 case REJECTED -> inactive.reject();
-                case MISSED -> inactive.miss();
+                case MISSED -> inactive.miss(300);
                 case BUSY -> inactive.busy();
                 default -> { }
             }
