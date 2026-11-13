@@ -5,8 +5,11 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 /**
  * OpenAPI / Swagger configuration for the Signify API.
@@ -36,6 +39,10 @@ public class OpenApiConfig {
                         .description("Signify Backend REST API Documentation")
                         .version("0.0.1-SNAPSHOT")
                 )
+                .servers(List.of(
+                        new Server().url("/"),
+                        new Server().url("http://localhost:8080")
+                ))
                 .addSecurityItem(new SecurityRequirement()
                         .addList(SECURITY_SCHEME_NAME)
                 )
