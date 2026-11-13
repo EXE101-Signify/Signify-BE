@@ -71,6 +71,8 @@ signify:
     read-timeout: ${SIGNIFY_AI_READ_TIMEOUT:5s}
   vsl:
     base-url: ${SIGNIFY_VSL_BASE_URL:http://127.0.0.1:8001}
+    streaming-secret: ${SIGNIFY_VSL_STREAMING_SECRET:}
+    ws-url: ${SIGNIFY_VSL_WS_URL:ws://127.0.0.1:8001/ws/vsl/stream}
 
 app:
   jwt:
