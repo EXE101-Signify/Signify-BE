@@ -66,7 +66,7 @@ public class VslStreamingController {
         String id = UUID.randomUUID().toString();
         long now = clock.millis();
         long expiry = now + TOKEN_TTL_MS;
-        var state = new SessionState(id, callId, call.getReceiverId(), call.getCallerId(),
+        var state = new SessionState(id, callId, actor.userId(), call.getCallerId(), call.getReceiverId(),
                 call.getConversationId(), expiry);
         String old = byCall.put(callId, id);
         if (old != null) sessions.remove(old);
@@ -133,8 +133,8 @@ public class VslStreamingController {
                     prediction.confidence(), prediction.processingMs(), prediction.timestamp());
             String destination = "/queue/calls/" + state.callId;
             messaging.convertAndSendToUser(Long.toString(state.callerId), destination, event);
-            if (state.signerId != state.callerId)
-                messaging.convertAndSendToUser(Long.toString(state.signerId), destination, event);
+            if (state.receiverId != state.callerId)
+                messaging.convertAndSendToUser(Long.toString(state.receiverId), destination, event);
         }
         return ResponseEntity.noContent().build();
     }
@@ -149,9 +149,7 @@ public class VslStreamingController {
     }
 
     private VideoCall requireSigner(long callId, CurrentUser actor) {
-        VideoCall call = calls.validateActiveCall(callId, actor);
-        if (actor.userId() != call.getReceiverId()) throw new ResponseStatusException(FORBIDDEN, "Signer required");
-        return call;
+        return calls.requireSigner(callId, actor);
     }
 
     private SessionState active(String id, long callId, long signerId) {
@@ -178,15 +176,16 @@ public class VslStreamingController {
 
     private static final class SessionState {
         final String id;
-        final long callId, signerId, callerId, conversationId, expiresAt;
+        final long callId, signerId, callerId, receiverId, conversationId, expiresAt;
         long lastSequence, lastFinalSequence;
         final LinkedHashSet<String> events = new LinkedHashSet<>();
 
-        SessionState(String id, long callId, long signerId, long callerId, long conversationId, long expiresAt) {
+        SessionState(String id, long callId, long signerId, long callerId, long receiverId, long conversationId, long expiresAt) {
             this.id = id;
             this.callId = callId;
             this.signerId = signerId;
             this.callerId = callerId;
+            this.receiverId = receiverId;
             this.conversationId = conversationId;
             this.expiresAt = expiresAt;
         }

@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 037-user-is-signer
+      author: signify
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: is_signer
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

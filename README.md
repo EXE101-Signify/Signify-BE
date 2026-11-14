@@ -4,6 +4,19 @@ This repository is one Spring Boot 4.1.1 application, built with Gradle 9.7.1 an
 
 The Signify Premium payment flow, REST contract, renewal rules and preproduction checks are documented in [doc/payment-subscription.md](doc/payment-subscription.md). The backend requires both call participants to have an active paid subscription.
 
+## Vietnamese speech recognition
+
+The caller whose `users.is_signer` is false can turn on speech-to-text during an accepted call. The frontend sends 16-bit mono PCM through the authenticated call WebSocket; the backend forwards it to the separate `Vietnamese-STT` WebSocket and publishes final transcripts to both call participants. The STT API key stays in the backend.
+
+For local development, run the `Vietnamese-STT` repository on port **8002** (AI uses 8000 and VSL uses 8001):
+
+```powershell
+cd D:\BuiGiaHuy\CN8\EXE202\Vietnamese-STT
+.\.venv311\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --workers 1 --ws-max-size 32768 --ws-max-queue 8
+```
+
+The backend default is `SIGNIFY_STT_WS_URL=ws://127.0.0.1:8002/api/v1/stt/stream`. When the backend runs in a container, set that variable to an address reachable **from the container**. In production use `wss://` and set `SIGNIFY_STT_API_KEY` to the same value as the STT service's `STT_API_KEY`. Do not put this key in frontend environment variables. The STT service must finish loading its model before transcription can start; check its `/api/v1/health` endpoint.
+
 ## Pipeline
 
 `.github/workflows/workflow.yml` tests and builds a JAR for pushes to `main`, pull requests into `main`, and manual runs. Only successful `main` push/manual runs build and push `linux/amd64` images to Docker Hub. Images are tagged `latest` and with the full Git commit SHA. The deploy step sets Dokploy's Docker image to the SHA tag through its documented API, then requests a deployment. It checks that the commit is still the head of `main` before deployment. GitHub Actions reports that Dokploy accepted the request; inspect Dokploy for the final deployment status.

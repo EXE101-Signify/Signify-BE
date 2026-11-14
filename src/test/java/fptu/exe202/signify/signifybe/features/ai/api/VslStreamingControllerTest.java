@@ -4,6 +4,7 @@ import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.auth.domain.Role;
 import fptu.exe202.signify.signifybe.features.call.application.VideoCallService;
 import fptu.exe202.signify.signifybe.features.call.domain.VideoCall;
+import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,9 +30,9 @@ class VslStreamingControllerTest {
 
     @Test
     void signerCanIssueAndRevokeWhileViewerCannotIssue() {
-        when(calls.validateActiveCall(eq(42L), any(CurrentUser.class))).thenReturn(call);
+        stubSigner();
         var viewer = new CurrentUser(10, 1, Role.USER);
-        assertThrows(ResponseStatusException.class, () -> controller.start(viewer, 42));
+        assertThrows(VideoCallException.class, () -> controller.start(viewer, 42));
         var ticket = controller.start(signer, 42).getBody().getData();
         assertNotNull(ticket.token());
         assertEquals("ws://127.0.0.1:8001/ws/vsl/stream", ticket.wsUrl());
@@ -45,7 +46,7 @@ class VslStreamingControllerTest {
 
     @Test
     void partialThenFinalCanShareSequenceButReplayDoesNotBroadcastTwice() {
-        when(calls.validateActiveCall(eq(42L), any(CurrentUser.class))).thenReturn(call);
+        stubSigner();
         var session = controller.start(signer, 42).getBody().getData().sessionId();
         var partial = new VslStreamingController.StreamingPrediction(UUID.randomUUID().toString(), session,
                 42, 20, 8, "PARTIAL", "NƯỚC", .91, 20, clock.millis());
@@ -61,5 +62,12 @@ class VslStreamingControllerTest {
         var stale = new VslStreamingController.StreamingPrediction(UUID.randomUUID().toString(), session,
                 42, 20, 7, "FINAL", "NƯỚC", .92, 21, clock.millis());
         assertThrows(ResponseStatusException.class, () -> controller.prediction(secret, stale));
+    }
+    private void stubSigner() {
+        when(calls.requireSigner(eq(42L), any(CurrentUser.class))).thenAnswer(invocation -> {
+            CurrentUser actor = invocation.getArgument(1);
+            if (actor.userId() != signer.userId()) throw VideoCallException.forbidden();
+            return call;
+        });
     }
 }

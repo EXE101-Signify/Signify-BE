@@ -92,6 +92,7 @@ public class UserManagementService {
         if (request.phone() != null) user.setPhone(request.phone().isEmpty() ? null : request.phone().strip());
         if (request.gender() != null) user.setGender(request.gender());
         if (request.address() != null) user.setAddress(request.address().isEmpty() ? null : request.address().strip());
+        if (request.isSigner() != null) user.setSigner(request.isSigner());
         user.setUpdatedProfile(true);
         user.setUpdatedAt(clock.millis());
         // The locked entity is managed by JPA. Dirty checking issues UPDATE, never INSERT.
@@ -142,6 +143,7 @@ public class UserManagementService {
         snapshot.put("gender", user.getGender());
         snapshot.put("address", user.getAddress());
         snapshot.put("emailVerified", user.getEmailVerified());
+        snapshot.put("isSigner", user.isSigner());
         return snapshot;
     }
 

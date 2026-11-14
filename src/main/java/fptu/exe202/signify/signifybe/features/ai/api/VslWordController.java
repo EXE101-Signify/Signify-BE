@@ -160,9 +160,7 @@ public class VslWordController {
     }
 
     private VideoCall requireSigner(long callId, CurrentUser actor) {
-        VideoCall call = calls.validateActiveCall(callId, actor);
-        if (actor.userId() != call.getReceiverId()) throw VideoCallException.forbidden();
-        return call;
+        return calls.requireSigner(callId, actor);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

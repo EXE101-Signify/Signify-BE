@@ -30,7 +30,7 @@ class VslWordControllerTest {
     @Test
     void viewerCannotSubmitClip() throws Exception {
         var viewer = new CurrentUser(10, 1, Role.USER);
-        when(calls.validateActiveCall(42L, viewer)).thenReturn(call);
+        when(calls.requireSigner(42L, viewer)).thenThrow(VideoCallException.forbidden());
         var clip = new MockMultipartFile("file", "clip.webm", "video/webm", new byte[]{1});
         assertThrows(VideoCallException.class, () -> controller.clip(viewer, 42L, clip, null, null, null, null));
         verifyNoInteractions(messaging);
@@ -39,7 +39,7 @@ class VslWordControllerTest {
     @Test
     void oversizedClipIsRejectedBeforeCallingAi() throws Exception {
         var signer = new CurrentUser(20, 2, Role.USER);
-        when(calls.validateActiveCall(42L, signer)).thenReturn(call);
+        when(calls.requireSigner(42L, signer)).thenReturn(call);
         var clip = new MockMultipartFile("file", "clip.webm", "video/webm", new byte[5_000_001]);
         assertThrows(ResponseStatusException.class, () -> controller.clip(signer, 42L, clip, null, null, null, null));
         verifyNoInteractions(messaging);
@@ -61,7 +61,7 @@ class VslWordControllerTest {
         server.start();
         try {
             var signer = new CurrentUser(20, 2, Role.USER);
-            when(calls.validateActiveCall(42L, signer)).thenReturn(call);
+            when(calls.requireSigner(42L, signer)).thenReturn(call);
             var localController = new VslWordController(calls, messaging,
                     "http://127.0.0.1:" + server.getAddress().getPort());
             var clip = new MockMultipartFile("file", "clip.webm", "video/webm", "webm-test".getBytes());
@@ -89,7 +89,7 @@ class VslWordControllerTest {
         server.start();
         try {
             var signer = new CurrentUser(20, 2, Role.USER);
-            when(calls.validateActiveCall(42L, signer)).thenReturn(call);
+            when(calls.requireSigner(42L, signer)).thenReturn(call);
             var localController = new VslWordController(calls, messaging,
                     "http://127.0.0.1:" + server.getAddress().getPort());
             var clip = new MockMultipartFile("file", "clip.webm", "video/webm", new byte[]{1});
@@ -118,7 +118,7 @@ class VslWordControllerTest {
         server.start();
         try {
             var signer = new CurrentUser(20, 2, Role.USER);
-            when(calls.validateActiveCall(42L, signer)).thenReturn(call);
+            when(calls.requireSigner(42L, signer)).thenReturn(call);
             var localController = new VslWordController(calls, messaging,
                     "http://127.0.0.1:" + server.getAddress().getPort());
             var clip = new MockMultipartFile("file", "clip.webm", "video/webm", new byte[]{1});

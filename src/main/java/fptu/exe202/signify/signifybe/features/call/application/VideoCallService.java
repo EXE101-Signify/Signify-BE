@@ -8,6 +8,8 @@ import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallExc
 import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.JpaVideoCallRepository;
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
 import fptu.exe202.signify.signifybe.features.payment.application.SubscriptionService;
+import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
+import fptu.exe202.signify.signifybe.features.user.domain.User;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,16 +26,18 @@ public class VideoCallService {
     private final ApplicationEventPublisher events;
     private final SubscriptionService subscriptions;
     private final CallExpiryService expiry;
+    private final UserRepository users;
 
     public VideoCallService(JpaVideoCallRepository calls, PrivateChatAccessService access, Clock clock,
                             ApplicationEventPublisher events, SubscriptionService subscriptions,
-                            CallExpiryService expiry) {
+                            CallExpiryService expiry, UserRepository users) {
         this.calls = calls;
         this.access = access;
         this.clock = clock;
         this.events = events;
         this.subscriptions = subscriptions;
         this.expiry = expiry;
+        this.users = users;
     }
 
     @Transactional
@@ -125,6 +129,36 @@ public class VideoCallService {
         if (call.getStatus() != VideoCallStatus.ACCEPTED) throw VideoCallException.notActive();
         if (expiry.closeIfExpired(callId)) throw VideoCallException.premiumRequired();
         return call;
+    }
+
+    /** The receiver signs when both participants use signs; otherwise the signer is whichever participant opted in. */
+    public Long signerId(VideoCall call) {
+        if (isSigner(call.getReceiverId())) return call.getReceiverId();
+        if (isSigner(call.getCallerId())) return call.getCallerId();
+        return null;
+    }
+
+    public VideoCall requireSigner(long callId, CurrentUser actor) {
+        VideoCall call = validateActiveCall(callId, actor);
+        Long selected = signerId(call);
+        if (selected == null || actor.userId() != selected) throw VideoCallException.forbidden();
+        return call;
+    }
+
+    public VideoCall requireSignerAccount(long callId, CurrentUser actor) {
+        VideoCall call = validateActiveCall(callId, actor);
+        if (!isSigner(actor.userId())) throw VideoCallException.forbidden();
+        return call;
+    }
+
+    public VideoCall requireNonSigner(long callId, CurrentUser actor) {
+        VideoCall call = validateActiveCall(callId, actor);
+        if (isSigner(actor.userId())) throw VideoCallException.forbidden();
+        return call;
+    }
+
+    private boolean isSigner(long userId) {
+        return users.findUserById(userId).map(User::isSigner).orElse(false);
     }
 
     private VideoCall lockedParticipantCall(long callId, CurrentUser actor) {

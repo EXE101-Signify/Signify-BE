@@ -20,3 +20,5 @@ databaseChangeLog:
       file: db/changelog/v1.2/027-user-block-integrity.yaml
   - include:
       file: db/changelog/v1.2/029-friend-relationships.yaml
+  - include:
+      file: db/changelog/v2.0/037-user-is-signer.yaml
