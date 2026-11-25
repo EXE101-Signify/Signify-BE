@@ -8,7 +8,6 @@ import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallExc
 import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.JpaVideoCallRepository;
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
 import fptu.exe202.signify.signifybe.features.payment.application.SubscriptionService;
-import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,14 +30,13 @@ class VideoCallSubscriptionAuthorizationTest {
     @Mock ApplicationEventPublisher events;
     @Mock SubscriptionService subscriptions;
     @Mock CallExpiryService expiry;
-    @Mock UserRepository users;
     VideoCallService service;
     CurrentUser caller = new CurrentUser(10, 1, Role.USER);
     CurrentUser receiver = new CurrentUser(20, 2, Role.USER);
 
     @BeforeEach void setUp() {
         service = new VideoCallService(repository, access,
-                Clock.fixed(Instant.ofEpochMilli(1_000), ZoneOffset.UTC), events, subscriptions, expiry, users);
+                Clock.fixed(Instant.ofEpochMilli(1_000), ZoneOffset.UTC), events, subscriptions, expiry);
     }
 
     @Test void bothPremiumParticipantsMayCreateCall() {

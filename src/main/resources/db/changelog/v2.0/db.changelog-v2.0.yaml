@@ -11,5 +11,3 @@ databaseChangeLog:
     file: db/changelog/v2.0/035-payment-webhook-events.yaml
 - include:
     file: db/changelog/v2.0/036-seed-premium-monthly.yaml
-- include:
-    file: db/changelog/v2.0/037-user-is-signer.yaml

@@ -57,8 +57,6 @@ public class SecurityConfig {
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                         // Browser WebSocket clients send their bearer token in STOMP CONNECT.
                         .requestMatchers(HttpMethod.GET, "/ws/chat").permitAll()
-                        // Internal VSL routes authenticate with X-VSL-Service-Token in their controller.
-                        .requestMatchers(HttpMethod.POST, "/api/internal/vsl/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().hasAnyRole("USER", "ADMIN"))
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService, errors, accountAccess, sessionAccess),

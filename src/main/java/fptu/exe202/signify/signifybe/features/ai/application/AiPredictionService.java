@@ -6,6 +6,7 @@ import fptu.exe202.signify.signifybe.features.ai.infrastructure.AiFrameRejectedE
 import fptu.exe202.signify.signifybe.features.auth.domain.CurrentUser;
 import fptu.exe202.signify.signifybe.features.call.application.VideoCallService;
 import fptu.exe202.signify.signifybe.features.call.domain.VideoCall;
+import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -31,7 +32,8 @@ public class AiPredictionService {
     }
 
     public AiPredictionEvent predict(long callId, CurrentUser actor, byte[] image, MediaType imageType) {
-        calls.requireSigner(callId, actor);
+        VideoCall sourceCall = calls.validateActiveCall(callId, actor);
+        if (actor.userId() != sourceCall.getReceiverId()) throw VideoCallException.forbidden();
         AiPredictionResponse prediction;
         try {
             prediction = ai.predict(image, imageType);
@@ -51,7 +53,7 @@ public class AiPredictionService {
         }
 
         // A call may have ended while the external AI request was in flight.
-        VideoCall call = calls.requireSigner(callId, actor);
+        VideoCall call = calls.validateActiveCall(callId, actor);
         AiPredictionResponse accepted = letters.observe(callId, prediction);
         if (accepted == null) return null;
         text.appendAccepted(callId, actor, accepted.letter());

@@ -30,11 +30,9 @@ public class ChatStompAuthorization implements ChannelInterceptor {
     static Pattern SUBSCRIPTION = Pattern.compile("/user/queue/conversations/([1-9][0-9]*)");
     static Pattern CALL_SUBSCRIPTION = Pattern.compile("/user/queue/calls/([1-9][0-9]*)");
     static Pattern WEBRTC_SUBSCRIPTION = Pattern.compile("/user/queue/calls/([1-9][0-9]*)/webrtc");
-    static Pattern STT_SUBSCRIPTION = Pattern.compile("/user/queue/calls/([1-9][0-9]*)/stt");
 
     static Pattern TYPING = Pattern.compile("/app/conversations/([1-9][0-9]*)/typing");
     static Pattern WEBRTC_SEND = Pattern.compile("/app/calls/([1-9][0-9]*)/webrtc");
-    static Pattern STT_SEND = Pattern.compile("/app/calls/([1-9][0-9]*)/stt");
 
     JwtService jwt;
 
@@ -85,13 +83,9 @@ public class ChatStompAuthorization implements ChannelInterceptor {
             if (command == StompCommand.SUBSCRIBE) {
                 var callSubscription = CALL_SUBSCRIPTION.matcher(destination == null ? "" : destination);
                 var webrtcSubscription = WEBRTC_SUBSCRIPTION.matcher(destination == null ? "" : destination);
-                var sttSubscription = STT_SUBSCRIPTION.matcher(destination == null ? "" : destination);
-                if (callSubscription.matches() || webrtcSubscription.matches() || sttSubscription.matches()) {
+                if (callSubscription.matches() || webrtcSubscription.matches()) {
                     try {
-                        String id = callSubscription.matches() ? callSubscription.group(1)
-                                : webrtcSubscription.matches() ? webrtcSubscription.group(1) : sttSubscription.group(1);
-                        if (sttSubscription.matches()) calls.requireNonSigner(Long.parseLong(id), user);
-                        else calls.validateActiveCall(Long.parseLong(id), user);
+                        calls.validateActiveCall(Long.valueOf(callSubscription.matches() ? callSubscription.group(1) : webrtcSubscription.group(1)), user);
                     } catch (NumberFormatException | VideoCallException ex) {
                         throw new AccessDeniedException("Call destination denied");
                     }
@@ -100,15 +94,6 @@ public class ChatStompAuthorization implements ChannelInterceptor {
             }
             if (command == StompCommand.SEND) {
                 var webrtcSend = WEBRTC_SEND.matcher(destination == null ? "" : destination);
-                var sttSend = STT_SEND.matcher(destination == null ? "" : destination);
-                if (sttSend.matches()) {
-                    try {
-                        calls.requireNonSigner(Long.parseLong(sttSend.group(1)), user);
-                    } catch (NumberFormatException | VideoCallException ex) {
-                        throw new AccessDeniedException("STT destination denied");
-                    }
-                    return message;
-                }
                 if (webrtcSend.matches()) {
                     try {
                         calls.validateActiveCall(Long.valueOf(webrtcSend.group(1)), user);

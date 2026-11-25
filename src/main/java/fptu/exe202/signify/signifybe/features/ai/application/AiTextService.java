@@ -5,6 +5,7 @@ import fptu.exe202.signify.signifybe.features.call.application.VideoCallEvent;
 import fptu.exe202.signify.signifybe.features.call.application.VideoCallService;
 import fptu.exe202.signify.signifybe.features.call.domain.VideoCall;
 import fptu.exe202.signify.signifybe.features.call.domain.VideoCallStatus;
+import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -72,7 +73,9 @@ public class AiTextService {
     }
 
     private VideoCall requireSigner(long callId, CurrentUser actor) {
-        return calls.requireSigner(callId, actor);
+        VideoCall call = calls.validateActiveCall(callId, actor);
+        if (actor.userId() != call.getReceiverId()) throw VideoCallException.forbidden();
+        return call;
     }
 
     private void send(long userId, long callId, AiTextUpdateEvent event) {

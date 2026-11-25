@@ -45,7 +45,7 @@ public class UserController {
             HttpServletRequest http
     ) {
         var result = userService.register(request.username(), request.password(), request.email(), request.otp(),
-                request.firstName(), request.lastName(), Boolean.TRUE.equals(request.isSigner()), avatar, metadata(http, null));
+                request.firstName(), request.lastName(), avatar, metadata(http, null));
         return noStore(ApiResponse.success("Account registered successfully", authMapper.toAuthResponse(result)));
     }
 

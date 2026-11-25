@@ -8,6 +8,5 @@ public record RegisterRequest(@NotBlank @Size(max = UserValidation.USERNAME_MAX_
                               @NotBlank @Email @Size(max = UserValidation.EMAIL_MAX_LENGTH) String email,
                               @NotBlank @Pattern(regexp = "[0-9]{6}") String otp,
                               @Size(max = UserValidation.NAME_MAX_LENGTH) String firstName,
-                              @Size(max = UserValidation.NAME_MAX_LENGTH) String lastName,
-                              Boolean isSigner) {
+                              @Size(max = UserValidation.NAME_MAX_LENGTH) String lastName) {
 }

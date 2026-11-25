@@ -69,13 +69,6 @@ signify:
     base-url: ${SIGNIFY_AI_BASE_URL:http://localhost:8000}
     connect-timeout: ${SIGNIFY_AI_CONNECT_TIMEOUT:2s}
     read-timeout: ${SIGNIFY_AI_READ_TIMEOUT:5s}
-  vsl:
-    base-url: ${SIGNIFY_VSL_BASE_URL:http://127.0.0.1:8001}
-    streaming-secret: ${SIGNIFY_VSL_STREAMING_SECRET:}
-    ws-url: ${SIGNIFY_VSL_WS_URL:ws://127.0.0.1:8001/ws/vsl/stream}
-  stt:
-    ws-url: ${SIGNIFY_STT_WS_URL:ws://127.0.0.1:8002/api/v1/stt/stream}
-    api-key: ${SIGNIFY_STT_API_KEY:}
 
 app:
   jwt:

@@ -32,8 +32,6 @@ public class User {
     private Boolean emailVerified;
     @Column(name = "is_updated_profile", nullable = false)
     private boolean updatedProfile;
-    @Column(name = "is_signer", nullable = false)
-    private boolean signer;
     @Column(name = "created_at")
     private Long createdAt;
     @Column(name = "updated_at")

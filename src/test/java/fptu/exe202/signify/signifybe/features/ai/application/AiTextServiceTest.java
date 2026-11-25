@@ -12,8 +12,6 @@ import fptu.exe202.signify.signifybe.features.call.domain.VideoCallStatus;
 import fptu.exe202.signify.signifybe.features.call.domain.exception.VideoCallException;
 import fptu.exe202.signify.signifybe.features.call.infrastructure.persistence.JpaVideoCallRepository;
 import fptu.exe202.signify.signifybe.features.chat.application.PrivateChatAccessService;
-import fptu.exe202.signify.signifybe.features.user.application.port.out.UserRepository;
-import fptu.exe202.signify.signifybe.features.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -42,14 +40,9 @@ class AiTextServiceTest {
     void setUp() {
         repository = mock(JpaVideoCallRepository.class);
         messaging = mock(SimpMessagingTemplate.class);
-        var users = mock(UserRepository.class);
-        var signerUser = new User("signer@example.com", "Signer", "One", 100);
-        signerUser.setSigner(true);
-        when(users.findUserById(SIGNER.userId())).thenReturn(Optional.of(signerUser));
-        when(users.findUserById(OTHER_SIGNER.userId())).thenReturn(Optional.of(signerUser));
         var calls = new VideoCallService(repository, mock(PrivateChatAccessService.class),
                 Clock.systemUTC(), mock(ApplicationEventPublisher.class),
-                mock(SubscriptionService.class), mock(CallExpiryService.class), users);
+                mock(SubscriptionService.class), mock(CallExpiryService.class));
         text = new AiTextService(calls, messaging, Clock.fixed(Instant.ofEpochMilli(1234), ZoneOffset.UTC));
         call = new VideoCall(7, VIEWER.userId(), SIGNER.userId(), 100);
         call.accept(200);

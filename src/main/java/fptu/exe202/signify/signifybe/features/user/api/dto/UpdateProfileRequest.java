@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** Missing/null fields are unchanged. The call communication preference is editable; identity, account role and status are not. */
+/** Missing/null fields are unchanged. Identity, role and status are never client writable. */
 public record UpdateProfileRequest(
         @Email @Size(max = UserValidation.EMAIL_MAX_LENGTH) @Pattern(regexp = UserValidation.NON_BLANK_REGEX) String email,
         @Size(max = UserValidation.NAME_MAX_LENGTH) String firstName,
@@ -13,5 +13,4 @@ public record UpdateProfileRequest(
         @Size(max = UserValidation.AVATAR_MAX_LENGTH) String avatar,
         @Size(max = UserValidation.PHONE_MAX_LENGTH) String phone,
         Boolean gender,
-        @Size(max = UserValidation.ADDRESS_MAX_LENGTH) String address,
-        Boolean isSigner) { }
+        @Size(max = UserValidation.ADDRESS_MAX_LENGTH) String address) { }
