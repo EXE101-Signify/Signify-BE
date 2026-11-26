@@ -37,7 +37,8 @@ public class CorsConfig {
                 "Content-Type",
                 "Accept",
                 "X-Requested-With",
-                "Cache-Control"
+                "Cache-Control",
+                "Priority"
         ));
 
         config.setAllowCredentials(true);
