@@ -32,6 +32,14 @@ public class AiPredictionService {
     }
 
     public AiPredictionEvent predict(long callId, CurrentUser actor, byte[] image, MediaType imageType) {
+        return predictFrame(callId, actor, image, imageType).accepted();
+    }
+
+    /**
+     * Processes one frame and exposes the raw valid AI result to the REST endpoint.
+     * Temporal stabilization still controls side effects and the realtime event.
+     */
+    public PredictionResult predictFrame(long callId, CurrentUser actor, byte[] image, MediaType imageType) {
         VideoCall sourceCall = calls.validateActiveCall(callId, actor);
         if (actor.userId() != sourceCall.getReceiverId()) throw VideoCallException.forbidden();
         AiPredictionResponse prediction;
@@ -41,7 +49,7 @@ public class AiPredictionService {
             calls.validateActiveCall(callId, actor);
             if (ex.isNoHand()) letters.noHand(callId);
             else letters.observe(callId, null);
-            return null;
+            return new PredictionResult(null, null);
         } catch (AiException ex) {
             letters.observe(callId, null);
             throw ex;
@@ -49,13 +57,13 @@ public class AiPredictionService {
         if (prediction == null || !prediction.isValid()) {
             calls.validateActiveCall(callId, actor);
             letters.observe(callId, null);
-            return null;
+            return new PredictionResult(null, null);
         }
 
         // A call may have ended while the external AI request was in flight.
         VideoCall call = calls.validateActiveCall(callId, actor);
         AiPredictionResponse accepted = letters.observe(callId, prediction);
-        if (accepted == null) return null;
+        if (accepted == null) return new PredictionResult(prediction, null);
         text.appendAccepted(callId, actor, accepted.letter());
         AiPredictionEvent event = AiPredictionEvent.from(call.getConversationId(), callId, accepted);
         String destination = "/queue/calls/" + callId;
@@ -63,8 +71,10 @@ public class AiPredictionService {
         if (!call.getReceiverId().equals(call.getCallerId())) {
             send(call.getReceiverId(), destination, event);
         }
-        return event;
+        return new PredictionResult(prediction, event);
     }
+
+    public record PredictionResult(AiPredictionResponse prediction, AiPredictionEvent accepted) { }
 
     private void send(long userId, String destination, AiPredictionEvent event) {
         try {

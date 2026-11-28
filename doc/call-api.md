@@ -105,17 +105,23 @@ curl -X POST "http://localhost:8080/api/calls/42/predictions" \
   -F "image=@hand.jpg;type=image/jpeg"
 ```
 
-The endpoint requires the authenticated requester to be a participant in an `ACCEPTED` call. It validates the call before invoking the AI service and checks it again after inference; if the call became inactive during inference, no event is sent. The Python HTTP API classifies each image independently. Spring Boot groups predictions by `callId` and emits an accepted letter after three consecutive valid predictions of the same A-Z character, each at confidence >= 0.75. A held character emits once. Two consecutive Python `No hand detected` responses release it, allowing the same character to be accepted again. A different character needs its own three consecutive predictions. Low-confidence and malformed results reset a candidate but do not release a held character. There is no cooldown or text buffer. When no letter is accepted, the REST endpoint returns HTTP 204 and sends no STOMP event. When a letter is accepted, it returns HTTP 200 with the `AiPredictionEvent` in `data`:
+The endpoint requires the authenticated requester to be a participant in an `ACCEPTED` call. It validates the call before invoking the AI service and checks it again after inference; if the call became inactive during inference, no event is sent. The Python HTTP API classifies each image independently. Spring Boot groups predictions by `callId` and emits an accepted letter after three consecutive valid predictions of the same A-Z character, each at confidence >= 0.75. A held character emits once. Two consecutive Python `No hand detected` responses release it, allowing the same character to be accepted again. A different character needs its own three consecutive predictions. Low-confidence and malformed results reset a candidate but do not release a held character. A valid prediction now returns HTTP 200 with `letter`, `confidence`, `timestamp`, and `accepted` in `data`; `event` is populated only when the frame completes stabilization. No-hand or malformed AI results still return HTTP 204 and send no STOMP event:
 
 ```json
 {
-  "eventId": "<generated UUID>",
-  "type": "AI_SIGN_PREDICTION",
-  "conversationId": 7,
-  "callId": 42,
   "letter": "A",
   "confidence": 0.96,
-  "timestamp": 1720000000000
+  "timestamp": 1720000000000,
+  "accepted": true,
+  "event": {
+    "eventId": "<generated UUID>",
+    "type": "AI_SIGN_PREDICTION",
+    "conversationId": 7,
+    "callId": 42,
+    "letter": "A",
+    "confidence": 0.96,
+    "timestamp": 1720000000000
+  }
 }
 ```
 

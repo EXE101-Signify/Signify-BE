@@ -9,7 +9,7 @@ import java.time.Duration;
 @ConfigurationProperties("signify.ai")
 public record AiProperties(String baseUrl,
                            @DefaultValue("2s") Duration connectTimeout,
-                           @DefaultValue("5s") Duration readTimeout) {
+                           @DefaultValue("30s") Duration readTimeout) {
     public AiProperties {
         try {
             URI uri = URI.create(baseUrl);

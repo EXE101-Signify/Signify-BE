@@ -26,7 +26,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+#      password: ${REDIS_PASSWORD:}
 
   mail:
     host: smtp.gmail.com
@@ -68,7 +68,7 @@ signify:
   ai:
     base-url: ${SIGNIFY_AI_BASE_URL:http://localhost:8000}
     connect-timeout: ${SIGNIFY_AI_CONNECT_TIMEOUT:2s}
-    read-timeout: ${SIGNIFY_AI_READ_TIMEOUT:5s}
+    read-timeout: ${SIGNIFY_AI_READ_TIMEOUT:30s}
 
 app:
   jwt:
